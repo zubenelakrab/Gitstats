@@ -223,6 +223,93 @@ export interface AnalysisReport {
   busFactor: BusFactorAnalysis;
   branches: Branch[];
   tags: Tag[];
+
+  // Extended analytics
+  velocity?: VelocityStats;
+  complexity?: ComplexityStats;
+  workPatterns?: WorkPatternsStats;
+  commitQuality?: CommitQualityStats;
+  collaboration?: CollaborationStats;
+  coupling?: CouplingStats;
+  health?: HealthStats;
+  branchAnalysis?: BranchesStats;
+}
+
+// Extended Stats Types (imported from analyzers)
+export interface VelocityStats {
+  commitsPerDay: number;
+  commitsPerWeek: number;
+  commitsPerMonth: number;
+  trend: 'accelerating' | 'stable' | 'decelerating';
+  trendPercentage: number;
+  weeklyVelocity: { week: string; commits: number; additions: number; deletions: number }[];
+  busiestWeek: { week: string; commits: number };
+  slowestWeek: { week: string; commits: number };
+  consistencyScore: number;
+  averageTimeBetweenCommits: number;
+}
+
+export interface ComplexityStats {
+  godFiles: { path: string; totalChanges: number; commitCount: number; reason: string }[];
+  growingFiles: { path: string; netGrowth: number; growthRate: number; trend: string }[];
+  refactoringCandidates: { path: string; addDeleteRatio: number; suggestion: string }[];
+  averageFileGrowth: number;
+  filesWithHighChurn: number;
+}
+
+export interface WorkPatternsStats {
+  peakHour: number;
+  peakDay: number;
+  nightOwlPercentage: number;
+  weekendPercentage: number;
+  crunchPeriods: { startDate: string; endDate: string; severity: string }[];
+  workLifeBalance: number;
+  hourlyDistribution: number[];
+  dailyDistribution: number[];
+}
+
+export interface CommitQualityStats {
+  averageMessageLength: number;
+  conventionalPercentage: number;
+  commitTypes: Record<string, number>;
+  wipCommits: { hash: string; message: string }[];
+  fixPercentage: number;
+  largeCommits: { hash: string; filesChanged: number }[];
+  atomicCommitScore: number;
+  qualityScore: number;
+}
+
+export interface CollaborationStats {
+  collaborationPairs: { author1: string; author2: string; sharedFiles: number }[];
+  sharedFiles: { path: string; authorCount: number }[];
+  collaborationScore: number;
+  loneWolves: { name: string; soloPercentage: number }[];
+}
+
+export interface CouplingStats {
+  temporalCoupling: { file1: string; file2: string; couplingStrength: number }[];
+  highImpactCommits: { hash: string; filesChanged: number; impactScore: number }[];
+  hiddenDependencies: { file1: string; file2: string; reason: string }[];
+  couplingScore: number;
+}
+
+export interface HealthStats {
+  zombieFiles: { path: string; daysSinceModified: number }[];
+  legacyFiles: { path: string; daysSinceModified: number; risk: string }[];
+  abandonedDirs: { path: string; daysSinceActivity: number }[];
+  activeAreas: { path: string; activityLevel: string }[];
+  ageDistribution: { fresh: number; recent: number; aging: number; old: number; ancient: number };
+  healthScore: number;
+  indicators: { name: string; status: string; value: string }[];
+}
+
+export interface BranchesStats {
+  totalBranches: number;
+  staleBranches: { name: string; daysSinceCommit: number; recommendation: string }[];
+  orphanBranches: { name: string; reason: string }[];
+  namingPatterns: { pattern: string; count: number }[];
+  averageBranchAge: number;
+  branchHealthScore: number;
 }
 
 export interface ReportSummary {

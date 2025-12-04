@@ -9,6 +9,14 @@ import { createAuthorAnalyzer } from '../analyzers/author-analyzer.ts';
 import { createTimelineAnalyzer } from '../analyzers/timeline-analyzer.ts';
 import { createHotspotAnalyzer } from '../analyzers/hotspot-analyzer.ts';
 import { createBusFactorAnalyzer } from '../analyzers/busfactor-analyzer.ts';
+import { createVelocityAnalyzer } from '../analyzers/velocity-analyzer.ts';
+import { createComplexityAnalyzer } from '../analyzers/complexity-analyzer.ts';
+import { createWorkPatternsAnalyzer } from '../analyzers/workpatterns-analyzer.ts';
+import { createCommitQualityAnalyzer } from '../analyzers/commits-analyzer.ts';
+import { createCollaborationAnalyzer } from '../analyzers/collaboration-analyzer.ts';
+import { createCouplingAnalyzer } from '../analyzers/coupling-analyzer.ts';
+import { createHealthAnalyzer } from '../analyzers/health-analyzer.ts';
+import { createBranchesAnalyzer } from '../analyzers/branches-analyzer.ts';
 import { daysDifference } from '../utils/date.ts';
 
 export interface AnalyzerProgress {
@@ -39,13 +47,14 @@ export class GitStatsAnalyzer {
 
   async analyze(): Promise<AnalysisReport> {
     const parser = createGitParser(this.config.repoPath);
+    const totalPhases = 8;
 
     // Phase 1: Get repository info
-    this.reportProgress('Fetching repository info', 1, 6);
+    this.reportProgress('Fetching repository info', 1, totalPhases);
     const repository = await parser.getRepositoryInfo();
 
     // Phase 2: Get commits
-    this.reportProgress('Fetching commits', 2, 6);
+    this.reportProgress('Fetching commits', 2, totalPhases);
     const commits = await parser.getCommits(this.config);
 
     if (commits.length === 0) {
@@ -53,14 +62,14 @@ export class GitStatsAnalyzer {
     }
 
     // Phase 3: Get branches and tags
-    this.reportProgress('Fetching branches and tags', 3, 6);
+    this.reportProgress('Fetching branches and tags', 3, totalPhases);
     const [branches, tags] = await Promise.all([
       parser.getBranches(),
       parser.getTags(),
     ]);
 
-    // Phase 4: Run analyzers in parallel
-    this.reportProgress('Analyzing commits', 4, 6);
+    // Phase 4: Run core analyzers in parallel
+    this.reportProgress('Analyzing commits (core)', 4, totalPhases);
     const [authors, timeline, hotspots, busFactor] = await Promise.all([
       createAuthorAnalyzer().analyze(commits, this.config),
       createTimelineAnalyzer().analyze(commits, this.config),
@@ -68,12 +77,32 @@ export class GitStatsAnalyzer {
       createBusFactorAnalyzer().analyze(commits, this.config),
     ]);
 
-    // Phase 5: Generate summary
-    this.reportProgress('Generating summary', 5, 6);
-    const summary = this.generateSummary(commits, authors, hotspots, repository);
+    // Phase 5: Run velocity and patterns analyzers
+    this.reportProgress('Analyzing velocity and patterns', 5, totalPhases);
+    const [velocity, workPatterns, commitQuality] = await Promise.all([
+      createVelocityAnalyzer().analyze(commits, this.config),
+      createWorkPatternsAnalyzer().analyze(commits, this.config),
+      createCommitQualityAnalyzer().analyze(commits, this.config),
+    ]);
 
-    // Phase 6: Compile report
-    this.reportProgress('Compiling report', 6, 6);
+    // Phase 6: Run collaboration and coupling analyzers
+    this.reportProgress('Analyzing collaboration and coupling', 6, totalPhases);
+    const [collaboration, coupling, complexity] = await Promise.all([
+      createCollaborationAnalyzer().analyze(commits, this.config),
+      createCouplingAnalyzer().analyze(commits, this.config),
+      createComplexityAnalyzer().analyze(commits, this.config),
+    ]);
+
+    // Phase 7: Run health and branch analyzers
+    this.reportProgress('Analyzing health and branches', 7, totalPhases);
+    const [health, branchAnalysis] = await Promise.all([
+      createHealthAnalyzer().analyze(commits, this.config),
+      createBranchesAnalyzer().analyze(commits, this.config, branches),
+    ]);
+
+    // Phase 8: Generate summary and compile report
+    this.reportProgress('Compiling report', 8, totalPhases);
+    const summary = this.generateSummary(commits, authors, hotspots, repository);
 
     return {
       repository,
@@ -86,6 +115,15 @@ export class GitStatsAnalyzer {
       busFactor,
       branches,
       tags,
+      // Extended analytics
+      velocity,
+      complexity,
+      workPatterns,
+      commitQuality,
+      collaboration,
+      coupling,
+      health,
+      branchAnalysis,
     };
   }
 
