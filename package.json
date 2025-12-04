@@ -1,0 +1,44 @@
+{
+  "name": "gitstats",
+  "version": "0.1.0",
+  "description": "Powerful Git repository analyzer with comprehensive statistics and insights",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "gitstats": "./src/cli/index.ts"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/cli/index.ts",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "git",
+    "statistics",
+    "analytics",
+    "repository",
+    "commits",
+    "contributors",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "cli-table3": "^0.6.5",
+    "ora": "^8.1.0",
+    "date-fns": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0"
+  }
+}
