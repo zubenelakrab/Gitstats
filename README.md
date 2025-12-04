@@ -27,6 +27,9 @@ npm install
 ## Usage
 
 ```bash
+gitstats <command> [path] [options]
+
+# Or directly with Node.js
 node --experimental-strip-types src/cli/index.ts <command> [path] [options]
 ```
 
@@ -36,7 +39,7 @@ node --experimental-strip-types src/cli/index.ts <command> [path] [options]
 Quick overview of a repository.
 
 ```bash
-node --experimental-strip-types src/cli/index.ts summary /path/to/repo
+gitstats summary /path/to/repo
 ```
 
 Output:
@@ -55,7 +58,7 @@ Output:
 Full analysis with detailed statistics.
 
 ```bash
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo
+gitstats analyze /path/to/repo
 ```
 
 Options:
@@ -75,23 +78,23 @@ Examples:
 
 ```bash
 # Export to HTML dashboard
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo --output html --file report.html
+gitstats analyze /path/to/repo --output html --file report.html
 
 # Export to JSON
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo --output json --file report.json
+gitstats analyze /path/to/repo --output json --file report.json
 
 # Analyze last 6 months
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo --since 2024-06-01
+gitstats analyze /path/to/repo --since 2024-06-01
 
 # Exclude node_modules and vendor
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo --exclude node_modules --exclude vendor
+gitstats analyze /path/to/repo --exclude node_modules --exclude vendor
 ```
 
 #### authors
 List contributors with their statistics.
 
 ```bash
-node --experimental-strip-types src/cli/index.ts authors /path/to/repo --top 10
+gitstats authors /path/to/repo --top 10
 ```
 
 Options:
@@ -102,7 +105,7 @@ Options:
 Show files with highest churn (most frequently modified).
 
 ```bash
-node --experimental-strip-types src/cli/index.ts hotspots /path/to/repo --top 15
+gitstats hotspots /path/to/repo --top 15
 ```
 
 Options:
@@ -112,7 +115,7 @@ Options:
 Analyze knowledge distribution and identify risky areas.
 
 ```bash
-node --experimental-strip-types src/cli/index.ts busfactor /path/to/repo
+gitstats busfactor /path/to/repo
 ```
 
 ## Understanding the Metrics
@@ -148,7 +151,7 @@ The HTML output generates an interactive dashboard with:
 - Full contributor list with progress bars
 
 ```bash
-node --experimental-strip-types src/cli/index.ts analyze /path/to/repo -o html -f dashboard.html
+gitstats analyze /path/to/repo -o html -f dashboard.html
 open dashboard.html
 ```
 
