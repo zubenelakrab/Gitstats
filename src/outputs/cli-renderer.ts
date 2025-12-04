@@ -33,6 +33,36 @@ export class CliRenderer implements OutputRenderer {
     // Activity Heatmap
     sections.push(this.renderActivityHeatmap(report));
 
+    // Velocity (if available)
+    if (report.velocity) {
+      sections.push(this.renderVelocity(report));
+    }
+
+    // Work Patterns (if available)
+    if (report.workPatterns) {
+      sections.push(this.renderWorkPatterns(report));
+    }
+
+    // Commit Quality (if available)
+    if (report.commitQuality) {
+      sections.push(this.renderCommitQuality(report));
+    }
+
+    // Health (if available)
+    if (report.health) {
+      sections.push(this.renderHealth(report));
+    }
+
+    // Collaboration (if available)
+    if (report.collaboration) {
+      sections.push(this.renderCollaboration(report));
+    }
+
+    // Branch Analysis (if available)
+    if (report.branchAnalysis) {
+      sections.push(this.renderBranches(report));
+    }
+
     return sections.join('\n\n');
   }
 
@@ -232,6 +262,171 @@ export class CliRenderer implements OutputRenderer {
 
       lines.push(`  ${group.label.padEnd(18)} ${chalk.cyan(bar)} ${total}`);
     }
+
+    return lines.join('\n');
+  }
+
+  private renderVelocity(report: AnalysisReport): string {
+    const velocity = report.velocity!;
+    const lines: string[] = [];
+
+    lines.push(chalk.bold('\n🚀 Development Velocity\n'));
+
+    const trendColor = velocity.trend === 'accelerating' ? chalk.green :
+                       velocity.trend === 'decelerating' ? chalk.red : chalk.yellow;
+    const trendEmoji = velocity.trend === 'accelerating' ? '📈' :
+                       velocity.trend === 'decelerating' ? '📉' : '➡️';
+
+    const table = new Table({
+      style: { head: [], border: [] },
+    });
+
+    table.push(
+      ['Commits/Day', velocity.commitsPerDay.toFixed(2)],
+      ['Commits/Week', velocity.commitsPerWeek.toFixed(2)],
+      ['Commits/Month', velocity.commitsPerMonth.toFixed(2)],
+      ['Trend', `${trendColor(velocity.trend)} ${trendEmoji} (${velocity.trendPercentage > 0 ? '+' : ''}${velocity.trendPercentage.toFixed(1)}%)`],
+      ['Consistency', `${velocity.consistencyScore.toFixed(0)}%`],
+      ['Avg Time Between Commits', `${velocity.averageTimeBetweenCommits.toFixed(1)} hours`],
+    );
+
+    lines.push(table.toString());
+
+    return lines.join('\n');
+  }
+
+  private renderWorkPatterns(report: AnalysisReport): string {
+    const patterns = report.workPatterns!;
+    const lines: string[] = [];
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    lines.push(chalk.bold('\n⏰ Work Patterns\n'));
+
+    const balanceColor = patterns.workLifeBalance >= 70 ? chalk.green :
+                         patterns.workLifeBalance >= 40 ? chalk.yellow : chalk.red;
+
+    const table = new Table({
+      style: { head: [], border: [] },
+    });
+
+    table.push(
+      ['Peak Hour', `${patterns.peakHour.toString().padStart(2, '0')}:00`],
+      ['Peak Day', days[patterns.peakDay]],
+      ['Night Owl %', `${patterns.nightOwlPercentage.toFixed(1)}%`],
+      ['Weekend %', `${patterns.weekendPercentage.toFixed(1)}%`],
+      ['Work-Life Balance', balanceColor(`${patterns.workLifeBalance.toFixed(0)}/100`)],
+    );
+
+    lines.push(table.toString());
+
+    if (patterns.crunchPeriods.length > 0) {
+      lines.push(chalk.bold.red(`\n  🔥 Crunch Periods: ${patterns.crunchPeriods.length}`));
+    }
+
+    return lines.join('\n');
+  }
+
+  private renderCommitQuality(report: AnalysisReport): string {
+    const quality = report.commitQuality!;
+    const lines: string[] = [];
+
+    lines.push(chalk.bold('\n📝 Commit Quality\n'));
+
+    const scoreColor = quality.qualityScore >= 80 ? chalk.green :
+                       quality.qualityScore >= 60 ? chalk.yellow : chalk.red;
+
+    const table = new Table({
+      style: { head: [], border: [] },
+    });
+
+    table.push(
+      ['Quality Score', scoreColor(`${quality.qualityScore.toFixed(0)}/100`)],
+      ['Atomic Score', `${quality.atomicCommitScore.toFixed(0)}/100`],
+      ['Conventional Commits', `${quality.conventionalPercentage.toFixed(1)}%`],
+      ['Fix/Bugfix Commits', `${quality.fixPercentage.toFixed(1)}%`],
+      ['WIP Commits', quality.wipCommits.length.toString()],
+      ['Large Commits', quality.largeCommits.length.toString()],
+    );
+
+    lines.push(table.toString());
+
+    return lines.join('\n');
+  }
+
+  private renderHealth(report: AnalysisReport): string {
+    const health = report.health!;
+    const lines: string[] = [];
+
+    lines.push(chalk.bold('\n🏥 Repository Health\n'));
+
+    const scoreColor = health.healthScore >= 80 ? chalk.green :
+                       health.healthScore >= 60 ? chalk.yellow : chalk.red;
+    const emoji = health.healthScore >= 80 ? '💚' :
+                  health.healthScore >= 60 ? '💛' : '❤️';
+
+    lines.push(`  Health Score: ${scoreColor(health.healthScore.toString())} ${emoji}`);
+    lines.push('');
+
+    for (const indicator of health.indicators) {
+      const statusEmoji = indicator.status === 'good' ? '✅' :
+                          indicator.status === 'warning' ? '⚠️' : '❌';
+      const statusColor = indicator.status === 'good' ? chalk.green :
+                          indicator.status === 'warning' ? chalk.yellow : chalk.red;
+      lines.push(`  ${statusEmoji} ${indicator.name.padEnd(18)} ${statusColor(indicator.value)}`);
+    }
+
+    if (health.zombieFiles.length > 0) {
+      lines.push(chalk.gray(`\n  🧟 ${health.zombieFiles.length} zombie files detected`));
+    }
+    if (health.abandonedDirs.length > 0) {
+      lines.push(chalk.gray(`  📂 ${health.abandonedDirs.length} abandoned directories`));
+    }
+
+    return lines.join('\n');
+  }
+
+  private renderCollaboration(report: AnalysisReport): string {
+    const collab = report.collaboration!;
+    const lines: string[] = [];
+
+    lines.push(chalk.bold('\n🤝 Collaboration\n'));
+
+    const scoreColor = collab.collaborationScore >= 70 ? chalk.green :
+                       collab.collaborationScore >= 40 ? chalk.yellow : chalk.red;
+
+    lines.push(`  Collaboration Score: ${scoreColor(collab.collaborationScore.toFixed(0) + '/100')}`);
+    lines.push(`  Top Collaborating Pairs: ${collab.collaborationPairs.length}`);
+    lines.push(`  Most Shared Files: ${collab.sharedFiles.length}`);
+
+    if (collab.loneWolves.length > 0) {
+      lines.push(chalk.yellow(`  🐺 Lone Wolves: ${collab.loneWolves.length}`));
+    }
+
+    return lines.join('\n');
+  }
+
+  private renderBranches(report: AnalysisReport): string {
+    const branches = report.branchAnalysis!;
+    const lines: string[] = [];
+
+    lines.push(chalk.bold('\n🌿 Branch Analysis\n'));
+
+    const scoreColor = branches.branchHealthScore >= 80 ? chalk.green :
+                       branches.branchHealthScore >= 60 ? chalk.yellow : chalk.red;
+
+    const table = new Table({
+      style: { head: [], border: [] },
+    });
+
+    table.push(
+      ['Branch Health', scoreColor(`${branches.branchHealthScore}/100`)],
+      ['Total Branches', branches.totalBranches.toString()],
+      ['Average Age', `${branches.averageBranchAge} days`],
+      ['Stale Branches', chalk.yellow(branches.staleBranches.length.toString())],
+      ['Orphan Branches', chalk.red(branches.orphanBranches.length.toString())],
+    );
+
+    lines.push(table.toString());
 
     return lines.join('\n');
   }

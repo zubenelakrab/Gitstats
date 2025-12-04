@@ -10,6 +10,30 @@ import type {
 } from '../types/index.ts';
 import { dirname } from 'node:path';
 
+// Risk level for hotspots
+export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
+
+export interface DirectoryHotspot {
+  path: string;
+  commits: number;
+  fileCount: number;
+  churnScore: number;
+  authorCount: number;
+  riskLevel: RiskLevel;
+  topFiles: string[];
+  avgFileChurn: number;
+}
+
+export interface RiskMapEntry {
+  path: string;
+  frequency: number;      // commit count
+  complexity: number;     // churn score
+  ownership: number;      // author concentration (1 = single owner)
+  combinedRisk: number;   // 0-100
+  riskLevel: RiskLevel;
+  recommendation: string;
+}
+
 interface FileData {
   path: string;
   commits: number;
@@ -176,10 +200,88 @@ export class HotspotAnalyzer implements Analyzer<HotspotAnalysis> {
       };
     }
 
+    // Calculate directory hotspots with risk levels
+    const directoryHotspots: DirectoryHotspot[] = [];
+    for (const [dirPath, data] of dirMap) {
+      if (dirPath === '.' || data.files.size < 2) continue;
+
+      // Get files in this directory with their churn
+      const dirFiles = files.filter(f => dirname(f.path) === dirPath);
+      const totalChurn = dirFiles.reduce((sum, f) => sum + f.churnScore, 0);
+      const avgChurn = dirFiles.length > 0 ? totalChurn / dirFiles.length : 0;
+
+      // Calculate risk level
+      let riskLevel: RiskLevel = 'low';
+      if (data.commits.size > 50 && avgChurn > 100) riskLevel = 'critical';
+      else if (data.commits.size > 30 && avgChurn > 50) riskLevel = 'high';
+      else if (data.commits.size > 15 || avgChurn > 30) riskLevel = 'medium';
+
+      directoryHotspots.push({
+        path: dirPath,
+        commits: data.commits.size,
+        fileCount: data.files.size,
+        churnScore: totalChurn,
+        authorCount: data.authors.size,
+        riskLevel,
+        topFiles: dirFiles.slice(0, 3).map(f => f.path),
+        avgFileChurn: avgChurn,
+      });
+    }
+
+    directoryHotspots.sort((a, b) => b.churnScore - a.churnScore);
+
+    // Calculate risk map (combines frequency + complexity + ownership)
+    const riskMap: RiskMapEntry[] = [];
+    for (const file of files.slice(0, 100)) {
+      const ownership = codeOwnership[file.path];
+      const ownershipConcentration = ownership ? ownership.ownershipPercentage / 100 : 1;
+
+      // Normalize values to 0-100
+      const maxCommits = files[0]?.commits || 1;
+      const maxChurn = files[0]?.churnScore || 1;
+
+      const frequencyScore = (file.commits / maxCommits) * 100;
+      const complexityScore = (file.churnScore / maxChurn) * 100;
+      const ownershipRisk = ownershipConcentration * 100; // Higher = more concentrated = riskier
+
+      // Combined risk: weighted average
+      const combinedRisk = (frequencyScore * 0.3) + (complexityScore * 0.4) + (ownershipRisk * 0.3);
+
+      let riskLevel: RiskLevel = 'low';
+      if (combinedRisk > 70) riskLevel = 'critical';
+      else if (combinedRisk > 50) riskLevel = 'high';
+      else if (combinedRisk > 30) riskLevel = 'medium';
+
+      let recommendation = '';
+      if (riskLevel === 'critical') {
+        recommendation = 'Urgent refactoring needed - high change frequency with concentrated ownership';
+      } else if (riskLevel === 'high') {
+        recommendation = 'Consider splitting or refactoring - becoming a maintenance burden';
+      } else if (riskLevel === 'medium') {
+        recommendation = 'Monitor closely - showing signs of complexity growth';
+      }
+
+      if (riskLevel !== 'low') {
+        riskMap.push({
+          path: file.path,
+          frequency: file.commits,
+          complexity: file.churnScore,
+          ownership: ownershipConcentration,
+          combinedRisk,
+          riskLevel,
+          recommendation,
+        });
+      }
+    }
+
+    riskMap.sort((a, b) => b.combinedRisk - a.combinedRisk);
+
     return {
       files,
       directories,
       codeOwnership,
+      directoryHotspots: directoryHotspots.slice(0, 20),
+      riskMap: riskMap.slice(0, 30),
     };
   }
 }

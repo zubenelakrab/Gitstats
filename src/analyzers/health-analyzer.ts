@@ -27,6 +27,9 @@ export interface HealthStats {
 
   // Health indicators
   indicators: HealthIndicator[];
+
+  // Test metrics (NEW)
+  testMetrics: TestMetrics;
 }
 
 export interface ZombieFile {
@@ -74,6 +77,23 @@ export interface HealthIndicator {
   status: 'good' | 'warning' | 'critical';
   value: string;
   description: string;
+}
+
+export interface TestMetrics {
+  testFiles: number;
+  sourceFiles: number;
+  testToCodeRatio: number;
+  testCoverage: string; // estimated based on test/code ratio
+  modulesWithoutTests: ModuleTestInfo[];
+  testTypes: Record<string, number>; // unit, integration, e2e, etc.
+  recentTestActivity: number; // test files modified in last 30 days
+}
+
+export interface ModuleTestInfo {
+  path: string;
+  sourceFiles: number;
+  testFiles: number;
+  hasTests: boolean;
 }
 
 export class HealthAnalyzer implements Analyzer<HealthStats> {
@@ -243,13 +263,17 @@ export class HealthAnalyzer implements Analyzer<HealthStats> {
     abandonedDirs.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
     activeAreas.sort((a, b) => b.recentCommits - a.recentCommits);
 
+    // Calculate test metrics
+    const testMetrics = this.calculateTestMetrics(fileData, thirtyDaysAgo);
+
     // Calculate health indicators
     const indicators = this.calculateIndicators(
       zombieFiles,
       legacyFiles,
       abandonedDirs,
       ageDistribution,
-      fileData.size
+      fileData.size,
+      testMetrics
     );
 
     // Calculate overall health score
@@ -263,6 +287,115 @@ export class HealthAnalyzer implements Analyzer<HealthStats> {
       ageDistribution,
       healthScore,
       indicators,
+      testMetrics,
+    };
+  }
+
+  private calculateTestMetrics(
+    fileData: Map<string, {
+      lastModified: Date;
+      firstModified: Date;
+      commits: number;
+      authors: Set<string>;
+      lastAuthor: string;
+    }>,
+    thirtyDaysAgo: Date
+  ): TestMetrics {
+    const testPatterns = [
+      /\.test\.[jt]sx?$/,
+      /\.spec\.[jt]sx?$/,
+      /_test\.[jt]sx?$/,
+      /test_.*\.[jt]sx?$/,
+      /\.tests?\.[jt]sx?$/,
+      /__tests__\//,
+      /\/tests?\//,
+    ];
+
+    const sourcePatterns = [
+      /\.[jt]sx?$/,
+      /\.py$/,
+      /\.go$/,
+      /\.rs$/,
+      /\.java$/,
+      /\.cs$/,
+      /\.rb$/,
+      /\.php$/,
+    ];
+
+    let testFiles = 0;
+    let sourceFiles = 0;
+    let recentTestActivity = 0;
+    const testTypes: Record<string, number> = { unit: 0, integration: 0, e2e: 0, other: 0 };
+    const moduleTests = new Map<string, { sourceFiles: number; testFiles: number }>();
+
+    for (const [path, data] of fileData) {
+      const isTest = testPatterns.some(p => p.test(path));
+      const isSource = sourcePatterns.some(p => p.test(path));
+
+      // Get module (first directory level)
+      const parts = path.split('/');
+      const module = parts.length > 1 ? parts[0] : '.';
+
+      if (!moduleTests.has(module)) {
+        moduleTests.set(module, { sourceFiles: 0, testFiles: 0 });
+      }
+      const moduleData = moduleTests.get(module)!;
+
+      if (isTest) {
+        testFiles++;
+        moduleData.testFiles++;
+
+        // Categorize test type
+        if (/e2e|end-to-end|cypress|playwright|selenium/i.test(path)) {
+          testTypes.e2e++;
+        } else if (/integration|int\./i.test(path)) {
+          testTypes.integration++;
+        } else if (/unit|\.test\.|\.spec\./i.test(path)) {
+          testTypes.unit++;
+        } else {
+          testTypes.other++;
+        }
+
+        // Recent test activity
+        if (data.lastModified >= thirtyDaysAgo) {
+          recentTestActivity++;
+        }
+      } else if (isSource) {
+        sourceFiles++;
+        moduleData.sourceFiles++;
+      }
+    }
+
+    const testToCodeRatio = sourceFiles > 0 ? testFiles / sourceFiles : 0;
+
+    // Estimate coverage based on ratio
+    let testCoverage: string;
+    if (testToCodeRatio >= 0.8) testCoverage = 'Excellent (80%+)';
+    else if (testToCodeRatio >= 0.5) testCoverage = 'Good (50-80%)';
+    else if (testToCodeRatio >= 0.3) testCoverage = 'Moderate (30-50%)';
+    else if (testToCodeRatio >= 0.1) testCoverage = 'Low (10-30%)';
+    else testCoverage = 'Minimal (<10%)';
+
+    // Find modules without tests
+    const modulesWithoutTests: ModuleTestInfo[] = Array.from(moduleTests.entries())
+      .filter(([, data]) => data.sourceFiles > 3 && data.testFiles === 0)
+      .map(([path, data]) => ({
+        path,
+        sourceFiles: data.sourceFiles,
+        testFiles: data.testFiles,
+        hasTests: false,
+      }))
+      .sort((a, b) => b.sourceFiles - a.sourceFiles)
+      .slice(0, 10);
+
+    return {
+      testFiles,
+      sourceFiles,
+      testToCodeRatio: Math.round(testToCodeRatio * 100) / 100,
+      testCoverage,
+      modulesWithoutTests,
+      testTypes,
+      recentTestActivity,
     };
   }
 
@@ -271,7 +404,8 @@ export class HealthAnalyzer implements Analyzer<HealthStats> {
     legacyFiles: LegacyFile[],
     abandonedDirs: AbandonedDir[],
     ageDistribution: AgeDistribution,
-    totalFiles: number
+    totalFiles: number,
+    testMetrics: TestMetrics
   ): HealthIndicator[] {
     const indicators: HealthIndicator[] = [];
 
@@ -318,6 +452,15 @@ export class HealthAnalyzer implements Analyzer<HealthStats> {
       description: 'Legacy files not touched in 1+ year',
     });
 
+    // Test coverage indicator
+    const testRatio = testMetrics.testToCodeRatio;
+    indicators.push({
+      name: 'Test Coverage',
+      status: testRatio >= 0.5 ? 'good' : testRatio >= 0.2 ? 'warning' : 'critical',
+      value: `${Math.round(testRatio * 100)}%`,
+      description: `${testMetrics.testFiles} test files / ${testMetrics.sourceFiles} source files`,
+    });
+
     return indicators;
   }
 
@@ -341,6 +484,15 @@ export class HealthAnalyzer implements Analyzer<HealthStats> {
       ageDistribution: { fresh: 0, recent: 0, aging: 0, old: 0, ancient: 0 },
       healthScore: 100,
       indicators: [],
+      testMetrics: {
+        testFiles: 0,
+        sourceFiles: 0,
+        testToCodeRatio: 0,
+        testCoverage: 'No data',
+        modulesWithoutTests: [],
+        testTypes: { unit: 0, integration: 0, e2e: 0, other: 0 },
+        recentTestActivity: 0,
+      },
     };
   }
 }

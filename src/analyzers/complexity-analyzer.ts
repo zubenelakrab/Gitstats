@@ -18,6 +18,40 @@ export interface ComplexityStats {
   averageFileGrowth: number;
   totalFilesAnalyzed: number;
   filesWithHighChurn: number;
+
+  // Technical Debt Analysis (NEW)
+  technicalDebtScore: number; // 0-100, higher = more debt
+  debtByModule: ModuleDebt[];
+  debtTrend: 'increasing' | 'stable' | 'decreasing';
+  criticalDebtAreas: CriticalDebtArea[];
+  debtIndicators: DebtIndicator[];
+}
+
+export interface ModuleDebt {
+  path: string;
+  debtScore: number;
+  filesWithDebt: number;
+  totalFiles: number;
+  topIssues: string[];
+}
+
+export interface CriticalDebtArea {
+  path: string;
+  debtScore: number;
+  reason: string;
+  metrics: {
+    churnRate: number;
+    growthRate: number;
+    authorConcentration: number;
+  };
+  recommendation: string;
+}
+
+export interface DebtIndicator {
+  name: string;
+  value: number;
+  status: 'good' | 'warning' | 'critical';
+  description: string;
 }
 
 export interface GodFile {
@@ -173,6 +207,17 @@ export class ComplexityAnalyzer implements Analyzer<ComplexityStats> {
       if (stats.commits > 20) filesWithHighChurn++;
     }
 
+    // Calculate Technical Debt Analysis
+    const { technicalDebtScore, debtByModule, criticalDebtAreas, debtIndicators } =
+      this.calculateTechnicalDebt(fileStats, godFiles, growingFiles, refactoringCandidates);
+
+    // Determine debt trend
+    const growingCount = growingFiles.filter(f => f.trend === 'growing').length;
+    const shrinkingCount = growingFiles.filter(f => f.trend === 'shrinking').length;
+    let debtTrend: 'increasing' | 'stable' | 'decreasing' = 'stable';
+    if (growingCount > shrinkingCount * 2) debtTrend = 'increasing';
+    else if (shrinkingCount > growingCount * 2) debtTrend = 'decreasing';
+
     return {
       godFiles: godFiles.slice(0, 20),
       growingFiles: growingFiles.slice(0, 20),
@@ -180,7 +225,171 @@ export class ComplexityAnalyzer implements Analyzer<ComplexityStats> {
       averageFileGrowth: fileStats.size > 0 ? totalGrowth / fileStats.size : 0,
       totalFilesAnalyzed: fileStats.size,
       filesWithHighChurn,
+      technicalDebtScore,
+      debtByModule,
+      debtTrend,
+      criticalDebtAreas,
+      debtIndicators,
     };
+  }
+
+  private calculateTechnicalDebt(
+    fileStats: Map<string, { additions: number; deletions: number; commits: number; authors: Set<string> }>,
+    godFiles: GodFile[],
+    growingFiles: GrowingFile[],
+    refactoringCandidates: RefactoringCandidate[]
+  ): {
+    technicalDebtScore: number;
+    debtByModule: ModuleDebt[];
+    criticalDebtAreas: CriticalDebtArea[];
+    debtIndicators: DebtIndicator[];
+  } {
+    // Group files by top-level module/directory
+    const moduleStats = new Map<string, {
+      files: number;
+      filesWithDebt: number;
+      totalChurn: number;
+      totalGrowth: number;
+      issues: string[];
+    }>();
+
+    const getModule = (path: string): string => {
+      const parts = path.split('/');
+      return parts.length > 1 ? parts.slice(0, 2).join('/') : parts[0];
+    };
+
+    // Initialize modules
+    for (const [path, stats] of fileStats) {
+      const module = getModule(path);
+      if (!moduleStats.has(module)) {
+        moduleStats.set(module, { files: 0, filesWithDebt: 0, totalChurn: 0, totalGrowth: 0, issues: [] });
+      }
+      const mod = moduleStats.get(module)!;
+      mod.files++;
+      mod.totalChurn += stats.commits;
+      mod.totalGrowth += stats.additions - stats.deletions;
+
+      // Check if file has debt indicators
+      const hasDebt = stats.commits > 20 ||
+        (stats.additions / Math.max(stats.deletions, 1)) > 5 ||
+        stats.authors.size === 1 && stats.commits > 10;
+      if (hasDebt) mod.filesWithDebt++;
+    }
+
+    // Add issues from god files
+    for (const gf of godFiles) {
+      const module = getModule(gf.path);
+      const mod = moduleStats.get(module);
+      if (mod && !mod.issues.includes('God files detected')) {
+        mod.issues.push('God files detected');
+      }
+    }
+
+    // Add issues from growing files
+    for (const gf of growingFiles) {
+      const module = getModule(gf.path);
+      const mod = moduleStats.get(module);
+      if (mod && gf.trend === 'growing' && !mod.issues.includes('Files growing rapidly')) {
+        mod.issues.push('Files growing rapidly');
+      }
+    }
+
+    // Calculate module debt scores
+    const debtByModule: ModuleDebt[] = [];
+    for (const [path, stats] of moduleStats) {
+      if (stats.files < 3) continue;
+
+      const debtRatio = stats.filesWithDebt / stats.files;
+      const debtScore = Math.round(debtRatio * 100);
+
+      debtByModule.push({
+        path,
+        debtScore,
+        filesWithDebt: stats.filesWithDebt,
+        totalFiles: stats.files,
+        topIssues: stats.issues.slice(0, 3),
+      });
+    }
+
+    debtByModule.sort((a, b) => b.debtScore - a.debtScore);
+
+    // Calculate critical debt areas
+    const criticalDebtAreas: CriticalDebtArea[] = [];
+    for (const gf of godFiles.slice(0, 10)) {
+      const stats = fileStats.get(gf.path);
+      if (!stats) continue;
+
+      const churnRate = stats.commits;
+      const growthRate = stats.additions - stats.deletions;
+      const authorConcentration = 1 / stats.authors.size;
+
+      criticalDebtAreas.push({
+        path: gf.path,
+        debtScore: Math.min(100, Math.round(gf.totalChanges / 100)),
+        reason: gf.reason,
+        metrics: { churnRate, growthRate, authorConcentration },
+        recommendation: this.getDebtRecommendation(churnRate, growthRate, authorConcentration),
+      });
+    }
+
+    // Calculate debt indicators
+    const totalFiles = fileStats.size;
+    const godFilePercentage = (godFiles.length / totalFiles) * 100;
+    const growingFilesPercentage = (growingFiles.filter(f => f.trend === 'growing').length / totalFiles) * 100;
+    const refactorNeededPercentage = (refactoringCandidates.length / totalFiles) * 100;
+
+    const debtIndicators: DebtIndicator[] = [
+      {
+        name: 'God Files',
+        value: godFiles.length,
+        status: godFiles.length < 5 ? 'good' : godFiles.length < 15 ? 'warning' : 'critical',
+        description: `${godFilePercentage.toFixed(1)}% of files are "god files"`,
+      },
+      {
+        name: 'Growing Files',
+        value: growingFiles.filter(f => f.trend === 'growing').length,
+        status: growingFilesPercentage < 5 ? 'good' : growingFilesPercentage < 15 ? 'warning' : 'critical',
+        description: `${growingFilesPercentage.toFixed(1)}% of files are growing rapidly`,
+      },
+      {
+        name: 'Refactor Needed',
+        value: refactoringCandidates.length,
+        status: refactorNeededPercentage < 10 ? 'good' : refactorNeededPercentage < 25 ? 'warning' : 'critical',
+        description: `${refactorNeededPercentage.toFixed(1)}% of files need refactoring`,
+      },
+    ];
+
+    // Calculate high churn files count
+    const highChurnCount = Array.from(fileStats.values()).filter(s => s.commits > 20).length;
+    debtIndicators.push({
+      name: 'High Churn Files',
+      value: highChurnCount,
+      status: highChurnCount < 20 ? 'good' : highChurnCount < 50 ? 'warning' : 'critical',
+      description: 'Files with more than 20 commits',
+    });
+
+    // Calculate overall technical debt score
+    let technicalDebtScore = 0;
+    for (const indicator of debtIndicators) {
+      if (indicator.status === 'critical') technicalDebtScore += 25;
+      else if (indicator.status === 'warning') technicalDebtScore += 10;
+    }
+    technicalDebtScore = Math.min(100, technicalDebtScore);
+
+    return { technicalDebtScore, debtByModule: debtByModule.slice(0, 15), criticalDebtAreas, debtIndicators };
+  }
+
+  private getDebtRecommendation(churnRate: number, growthRate: number, authorConcentration: number): string {
+    if (authorConcentration > 0.8) {
+      return 'Single owner - spread knowledge through pair programming or code reviews';
+    }
+    if (growthRate > 500) {
+      return 'File growing too fast - consider splitting into smaller modules';
+    }
+    if (churnRate > 50) {
+      return 'High change frequency - stabilize API or add better abstractions';
+    }
+    return 'Monitor and refactor incrementally';
   }
 }
 

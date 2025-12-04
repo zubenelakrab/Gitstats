@@ -2,6 +2,7 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
+  Tag,
 } from '../types/index.ts';
 import {
   toWeekKey,
@@ -33,6 +34,19 @@ export interface VelocityStats {
   // Consistency
   consistencyScore: number; // 0-100, higher = more consistent
   averageTimeBetweenCommits: number; // in hours
+
+  // Mean Time Between Large Commits (NEW)
+  mtblc: number; // in hours - time between commits with > 500 LOC changes
+  largeCommitFrequency: string; // human readable
+
+  // Release rhythm (NEW)
+  releaseRhythm: ReleaseRhythm;
+
+  // Velocity by day of week (NEW)
+  velocityByDayOfWeek: number[];
+
+  // Sprint/iteration detection (NEW)
+  sprintCycles: SprintCycle[];
 }
 
 export interface WeeklyVelocity {
@@ -54,11 +68,34 @@ export interface AuthorVelocity {
   totalDays: number; // days since first commit
 }
 
+export interface ReleaseRhythm {
+  averageDaysBetweenReleases: number;
+  releases: ReleaseInfo[];
+  releaseFrequency: string; // human readable
+  lastRelease: Date | null;
+  daysSinceLastRelease: number;
+}
+
+export interface ReleaseInfo {
+  tag: string;
+  date: Date;
+  commitsSinceLastRelease: number;
+  daysSinceLastRelease: number;
+}
+
+export interface SprintCycle {
+  startDate: string;
+  endDate: string;
+  commits: number;
+  authors: number;
+  intensity: 'high' | 'medium' | 'low';
+}
+
 export class VelocityAnalyzer implements Analyzer<VelocityStats> {
   name = 'velocity-analyzer';
   description = 'Analyzes team velocity and commit trends';
 
-  async analyze(commits: Commit[], _config: AnalysisConfig): Promise<VelocityStats> {
+  async analyze(commits: Commit[], _config: AnalysisConfig, tags?: Tag[]): Promise<VelocityStats> {
     if (commits.length === 0) {
       return this.emptyStats();
     }
@@ -198,6 +235,29 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
     // Average time between commits
     const averageTimeBetweenCommits = this.calculateAverageTimeBetween(sorted.map(c => c.date));
 
+    // Calculate MTBLC (Mean Time Between Large Commits)
+    const largeCommits = sorted.filter(c => {
+      let totalChanges = 0;
+      for (const file of c.files) {
+        totalChanges += file.additions + file.deletions;
+      }
+      return totalChanges > 500;
+    });
+    const mtblc = this.calculateAverageTimeBetween(largeCommits.map(c => c.date));
+    const largeCommitFrequency = this.formatTimeDuration(mtblc);
+
+    // Velocity by day of week
+    const velocityByDayOfWeek = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    for (const commit of sorted) {
+      velocityByDayOfWeek[commit.date.getDay()]++;
+    }
+
+    // Calculate release rhythm from tags
+    const releaseRhythm = this.calculateReleaseRhythm(sorted, tags || []);
+
+    // Detect sprint cycles (2-week periods with high activity)
+    const sprintCycles = this.detectSprintCycles(weeklyVelocity);
+
     return {
       commitsPerDay: commits.length / totalDays,
       commitsPerWeek: (commits.length / totalDays) * 7,
@@ -210,6 +270,11 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
       slowestWeek: { week: slowestWeek.week, commits: slowestWeek.commits },
       consistencyScore,
       averageTimeBetweenCommits,
+      mtblc,
+      largeCommitFrequency,
+      releaseRhythm,
+      velocityByDayOfWeek,
+      sprintCycles,
     };
   }
 
@@ -242,6 +307,133 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
     return Math.round(score);
   }
 
+  private formatTimeDuration(hours: number): string {
+    if (hours === 0) return 'N/A';
+    if (hours < 24) return `${Math.round(hours)} hours`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days} days`;
+    const weeks = Math.round(days / 7);
+    if (weeks < 4) return `${weeks} weeks`;
+    const months = Math.round(days / 30);
+    return `${months} months`;
+  }
+
+  private calculateReleaseRhythm(commits: Commit[], tags: Tag[]): ReleaseRhythm {
+    const now = new Date();
+
+    // Filter version-like tags and sort by date
+    const versionTags = tags
+      .filter(t => /^v?\d+\.\d+/.test(t.name))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    if (versionTags.length === 0) {
+      return {
+        averageDaysBetweenReleases: 0,
+        releases: [],
+        releaseFrequency: 'No releases detected',
+        lastRelease: null,
+        daysSinceLastRelease: 0,
+      };
+    }
+
+    const releases: ReleaseInfo[] = [];
+    let previousDate: Date | null = null;
+    let previousCommitIndex = 0;
+
+    for (const tag of versionTags) {
+      const daysSinceLastRelease = previousDate
+        ? daysDifference(previousDate, tag.date)
+        : 0;
+
+      // Count commits since last release
+      let commitsSinceLastRelease = 0;
+      for (let i = previousCommitIndex; i < commits.length; i++) {
+        if (commits[i].date <= tag.date) {
+          commitsSinceLastRelease++;
+        } else {
+          previousCommitIndex = i;
+          break;
+        }
+      }
+
+      releases.push({
+        tag: tag.name,
+        date: tag.date,
+        commitsSinceLastRelease,
+        daysSinceLastRelease,
+      });
+
+      previousDate = tag.date;
+    }
+
+    // Calculate average days between releases
+    const intervals = releases.slice(1).map(r => r.daysSinceLastRelease);
+    const averageDaysBetweenReleases = intervals.length > 0
+      ? intervals.reduce((a, b) => a + b, 0) / intervals.length
+      : 0;
+
+    const lastRelease = versionTags[versionTags.length - 1].date;
+    const daysSinceLastRelease = daysDifference(lastRelease, now);
+
+    let releaseFrequency: string;
+    if (averageDaysBetweenReleases === 0) {
+      releaseFrequency = 'Single release';
+    } else if (averageDaysBetweenReleases < 7) {
+      releaseFrequency = 'Weekly';
+    } else if (averageDaysBetweenReleases < 14) {
+      releaseFrequency = 'Bi-weekly';
+    } else if (averageDaysBetweenReleases < 35) {
+      releaseFrequency = 'Monthly';
+    } else if (averageDaysBetweenReleases < 100) {
+      releaseFrequency = 'Quarterly';
+    } else {
+      releaseFrequency = 'Infrequent';
+    }
+
+    return {
+      averageDaysBetweenReleases: Math.round(averageDaysBetweenReleases),
+      releases: releases.slice(-10), // Last 10 releases
+      releaseFrequency,
+      lastRelease,
+      daysSinceLastRelease,
+    };
+  }
+
+  private detectSprintCycles(weeklyVelocity: WeeklyVelocity[]): SprintCycle[] {
+    if (weeklyVelocity.length < 4) return [];
+
+    const cycles: SprintCycle[] = [];
+    const avgCommits = weeklyVelocity.reduce((sum, w) => sum + w.commits, 0) / weeklyVelocity.length;
+
+    // Look at 2-week windows
+    for (let i = 0; i < weeklyVelocity.length - 1; i += 2) {
+      const week1 = weeklyVelocity[i];
+      const week2 = weeklyVelocity[i + 1];
+
+      if (!week1 || !week2) continue;
+
+      const totalCommits = week1.commits + week2.commits;
+      const totalAuthors = new Set([...Array(week1.authors).keys(), ...Array(week2.authors).keys()]).size;
+
+      let intensity: 'high' | 'medium' | 'low';
+      if (totalCommits > avgCommits * 3) intensity = 'high';
+      else if (totalCommits > avgCommits * 1.5) intensity = 'medium';
+      else intensity = 'low';
+
+      if (intensity !== 'low') {
+        cycles.push({
+          startDate: week1.week,
+          endDate: week2.week,
+          commits: totalCommits,
+          authors: Math.max(week1.authors, week2.authors),
+          intensity,
+        });
+      }
+    }
+
+    return cycles.slice(0, 10);
+  }
+
   private emptyStats(): VelocityStats {
     return {
       commitsPerDay: 0,
@@ -255,6 +447,17 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
       slowestWeek: { week: 'N/A', commits: 0 },
       consistencyScore: 0,
       averageTimeBetweenCommits: 0,
+      mtblc: 0,
+      largeCommitFrequency: 'N/A',
+      releaseRhythm: {
+        averageDaysBetweenReleases: 0,
+        releases: [],
+        releaseFrequency: 'No releases detected',
+        lastRelease: null,
+        daysSinceLastRelease: 0,
+      },
+      velocityByDayOfWeek: [0, 0, 0, 0, 0, 0, 0],
+      sprintCycles: [],
     };
   }
 }

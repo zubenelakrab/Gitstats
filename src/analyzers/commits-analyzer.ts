@@ -30,6 +30,12 @@ export interface CommitQualityStats {
 
   // Overall quality score
   qualityScore: number;
+
+  // Author breakdown by type (NEW)
+  authorBreakdown: AuthorTypeBreakdown[];
+
+  // Type evolution over time (NEW)
+  typeEvolution: TypeEvolutionEntry[];
 }
 
 export interface WipCommit {
@@ -54,6 +60,22 @@ export interface ShotgunCommit {
   directories: string[];
   filesChanged: number;
   reason: string;
+}
+
+export interface AuthorTypeBreakdown {
+  author: string;
+  email: string;
+  totalCommits: number;
+  types: Record<string, number>;
+  primaryType: string;
+  diversityScore: number; // 0-100, higher = more diverse contribution types
+}
+
+export interface TypeEvolutionEntry {
+  month: string;
+  types: Record<string, number>;
+  totalCommits: number;
+  dominantType: string;
 }
 
 // Conventional commit patterns
@@ -94,6 +116,16 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
     const largeCommits: LargeCommit[] = [];
     const shotgunCommits: ShotgunCommit[] = [];
 
+    // Author breakdown tracking
+    const authorTypes = new Map<string, {
+      name: string;
+      email: string;
+      types: Record<string, number>;
+    }>();
+
+    // Type evolution tracking
+    const monthlyTypes = new Map<string, Record<string, number>>();
+
     for (const commit of commits) {
       const message = commit.messageSubject;
       const messageLength = message.length;
@@ -106,11 +138,35 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
 
       // Conventional commits
       const conventionalMatch = message.match(CONVENTIONAL_PATTERN);
+      let commitType: string;
       if (conventionalMatch) {
         conventionalCommits++;
-        const type = conventionalMatch[1].toLowerCase();
-        commitTypes[type] = (commitTypes[type] || 0) + 1;
+        commitType = conventionalMatch[1].toLowerCase();
+      } else {
+        // Try to detect type from message patterns for non-conventional commits
+        commitType = this.detectCommitType(message);
       }
+      commitTypes[commitType] = (commitTypes[commitType] || 0) + 1;
+
+      // Track author types
+      const authorKey = commit.author.email.toLowerCase();
+      if (!authorTypes.has(authorKey)) {
+        authorTypes.set(authorKey, {
+          name: commit.author.name,
+          email: commit.author.email,
+          types: {},
+        });
+      }
+      const authorData = authorTypes.get(authorKey)!;
+      authorData.types[commitType] = (authorData.types[commitType] || 0) + 1;
+
+      // Track monthly evolution
+      const monthKey = commit.date.toISOString().slice(0, 7); // YYYY-MM
+      if (!monthlyTypes.has(monthKey)) {
+        monthlyTypes.set(monthKey, {});
+      }
+      const monthData = monthlyTypes.get(monthKey)!;
+      monthData[commitType] = (monthData[commitType] || 0) + 1;
 
       // WIP commits
       if (WIP_PATTERNS.some(pattern => pattern.test(message))) {
@@ -188,6 +244,61 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
       totalCommits: commits.length,
     });
 
+    // Build author breakdown
+    const authorBreakdown: AuthorTypeBreakdown[] = Array.from(authorTypes.values())
+      .map(author => {
+        const totalCommits = Object.values(author.types).reduce((a, b) => a + b, 0);
+        const typeCount = Object.keys(author.types).length;
+
+        // Find primary type
+        let primaryType = 'other';
+        let maxCount = 0;
+        for (const [type, count] of Object.entries(author.types)) {
+          if (count > maxCount) {
+            maxCount = count;
+            primaryType = type;
+          }
+        }
+
+        // Diversity score: more types = more diverse (normalized to 0-100)
+        const diversityScore = Math.min(100, Math.round((typeCount / 8) * 100));
+
+        return {
+          author: author.name,
+          email: author.email,
+          totalCommits,
+          types: author.types,
+          primaryType,
+          diversityScore,
+        };
+      })
+      .sort((a, b) => b.totalCommits - a.totalCommits)
+      .slice(0, 20);
+
+    // Build type evolution
+    const typeEvolution: TypeEvolutionEntry[] = Array.from(monthlyTypes.entries())
+      .map(([month, types]) => {
+        const totalCommits = Object.values(types).reduce((a, b) => a + b, 0);
+
+        // Find dominant type
+        let dominantType = 'other';
+        let maxCount = 0;
+        for (const [type, count] of Object.entries(types)) {
+          if (count > maxCount) {
+            maxCount = count;
+            dominantType = type;
+          }
+        }
+
+        return {
+          month,
+          types,
+          totalCommits,
+          dominantType,
+        };
+      })
+      .sort((a, b) => a.month.localeCompare(b.month));
+
     return {
       averageMessageLength,
       shortMessages,
@@ -203,6 +314,8 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
       atomicCommitScore,
       shotgunCommits: shotgunCommits.slice(0, 20),
       qualityScore,
+      authorBreakdown,
+      typeEvolution,
     };
   }
 
@@ -238,6 +351,62 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
+  private detectCommitType(message: string): string {
+    const lowerMessage = message.toLowerCase();
+
+    // Fix/bugfix patterns
+    if (/\b(fix|bug|hotfix|patch|resolve|solved?)\b/i.test(message)) {
+      return 'fix';
+    }
+
+    // Feature/add patterns
+    if (/\b(add|new|feature|implement|create|introduce)\b/i.test(message)) {
+      return 'feat';
+    }
+
+    // Update/change patterns
+    if (/\b(update|change|modify|adjust|improve|enhance)\b/i.test(message)) {
+      return 'update';
+    }
+
+    // Refactor patterns
+    if (/\b(refactor|restructure|reorganize|clean|simplify)\b/i.test(message)) {
+      return 'refactor';
+    }
+
+    // Delete/remove patterns
+    if (/\b(delete|remove|drop|deprecate)\b/i.test(message)) {
+      return 'remove';
+    }
+
+    // Style patterns
+    if (/\b(style|css|scss|format|lint)\b/i.test(message)) {
+      return 'style';
+    }
+
+    // Docs patterns
+    if (/\b(doc|readme|comment|documentation)\b/i.test(message)) {
+      return 'docs';
+    }
+
+    // Test patterns
+    if (/\b(test|spec|coverage)\b/i.test(message)) {
+      return 'test';
+    }
+
+    // Config patterns
+    if (/\b(config|setting|environment|env)\b/i.test(message)) {
+      return 'config';
+    }
+
+    // Merge patterns
+    if (/\bmerge\b/i.test(message)) {
+      return 'merge';
+    }
+
+    return 'other';
+  }
+
   private emptyStats(): CommitQualityStats {
     return {
       averageMessageLength: 0,
@@ -254,6 +423,8 @@ export class CommitQualityAnalyzer implements Analyzer<CommitQualityStats> {
       atomicCommitScore: 100,
       shotgunCommits: [],
       qualityScore: 0,
+      authorBreakdown: [],
+      typeEvolution: [],
     };
   }
 }

@@ -276,6 +276,336 @@ export class HtmlRenderer implements OutputRenderer {
       </div>
     </div>
 
+    <!-- Extended Analytics Row -->
+    <div class="grid">
+      ${report.velocity ? `
+      <div class="card">
+        <h2>🚀 Velocity</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">${report.velocity.commitsPerDay.toFixed(1)}</div>
+            <div class="stat-label">Commits/Day</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.commitsPerWeek.toFixed(1)}</div>
+            <div class="stat-label">Commits/Week</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.velocity.trend === 'accelerating' ? 'var(--success)' : report.velocity.trend === 'decelerating' ? 'var(--danger)' : 'var(--warning)'}">
+              ${report.velocity.trend === 'accelerating' ? '📈' : report.velocity.trend === 'decelerating' ? '📉' : '➡️'}
+            </div>
+            <div class="stat-label">${report.velocity.trend} (${report.velocity.trendPercentage > 0 ? '+' : ''}${report.velocity.trendPercentage.toFixed(0)}%)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.consistencyScore.toFixed(0)}%</div>
+            <div class="stat-label">Consistency</div>
+          </div>
+        </div>
+        ${report.velocity.releaseRhythm && report.velocity.releaseRhythm.releases.length > 0 ? `
+        <h3 style="margin-top: 1rem;">📦 Release Rhythm</h3>
+        <div class="stat-grid" style="margin-top: 0.5rem;">
+          <div class="stat">
+            <div class="stat-value">${report.velocity.releaseRhythm.releaseFrequency}</div>
+            <div class="stat-label">Frequency</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.releaseRhythm.averageDaysBetweenReleases}</div>
+            <div class="stat-label">Avg Days Between</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.releaseRhythm.daysSinceLastRelease}</div>
+            <div class="stat-label">Days Since Last</div>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+      ` : ''}
+
+      ${report.health ? `
+      <div class="card">
+        <h2>🏥 Health Score</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.health.healthScore >= 80 ? 'var(--success)' : report.health.healthScore >= 60 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.health.healthScore}
+            </div>
+            <div class="stat-label">Overall Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.health.zombieFiles.length}</div>
+            <div class="stat-label">Zombie Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.health.abandonedDirs.length}</div>
+            <div class="stat-label">Abandoned Dirs</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.health.legacyFiles.filter(f => f.risk === 'high').length}</div>
+            <div class="stat-label">High Risk Legacy</div>
+          </div>
+        </div>
+        ${report.health.testMetrics ? `
+        <h3 style="margin-top: 1rem;">🧪 Test Metrics</h3>
+        <div class="stat-grid" style="margin-top: 0.5rem;">
+          <div class="stat">
+            <div class="stat-value">${report.health.testMetrics.testFiles}</div>
+            <div class="stat-label">Test Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${(report.health.testMetrics.testToCodeRatio * 100).toFixed(0)}%</div>
+            <div class="stat-label">Test/Code Ratio</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="font-size: 1rem;">${report.health.testMetrics.testCoverage}</div>
+            <div class="stat-label">Est. Coverage</div>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+      ` : ''}
+    </div>
+
+    <div class="grid">
+      ${report.workPatterns ? `
+      <div class="card">
+        <h2>⏰ Work Patterns</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">${report.workPatterns.peakHour.toString().padStart(2, '0')}:00</div>
+            <div class="stat-label">Peak Hour</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][report.workPatterns.peakDay]}</div>
+            <div class="stat-label">Peak Day</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.workPatterns.nightOwlPercentage.toFixed(0)}%</div>
+            <div class="stat-label">Night Owl</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.workPatterns.workLifeBalance >= 70 ? 'var(--success)' : report.workPatterns.workLifeBalance >= 40 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.workPatterns.workLifeBalance.toFixed(0)}/100
+            </div>
+            <div class="stat-label">Work-Life Balance</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+      ${report.commitQuality ? `
+      <div class="card">
+        <h2>📝 Commit Quality</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.commitQuality.qualityScore >= 80 ? 'var(--success)' : report.commitQuality.qualityScore >= 60 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.commitQuality.qualityScore.toFixed(0)}
+            </div>
+            <div class="stat-label">Quality Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.commitQuality.conventionalPercentage.toFixed(0)}%</div>
+            <div class="stat-label">Conventional</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.commitQuality.wipCommits.length}</div>
+            <div class="stat-label">WIP Commits</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.commitQuality.largeCommits.length}</div>
+            <div class="stat-label">Large Commits</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+    </div>
+
+    <div class="grid">
+      ${report.collaboration ? `
+      <div class="card">
+        <h2>🤝 Collaboration</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.collaboration.collaborationScore >= 70 ? 'var(--success)' : report.collaboration.collaborationScore >= 40 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.collaboration.collaborationScore.toFixed(0)}
+            </div>
+            <div class="stat-label">Collaboration Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.collaboration.collaborationPairs.length}</div>
+            <div class="stat-label">Collab Pairs</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.collaboration.sharedFiles.length}</div>
+            <div class="stat-label">Shared Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.collaboration.loneWolves.length}</div>
+            <div class="stat-label">Lone Wolves</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+      ${report.branchAnalysis ? `
+      <div class="card">
+        <h2>🌿 Branch Health</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.branchAnalysis.branchHealthScore >= 80 ? 'var(--success)' : report.branchAnalysis.branchHealthScore >= 60 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.branchAnalysis.branchHealthScore}
+            </div>
+            <div class="stat-label">Branch Health</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.branchAnalysis.totalBranches}</div>
+            <div class="stat-label">Total Branches</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: var(--warning)">${report.branchAnalysis.staleBranches.length}</div>
+            <div class="stat-label">Stale Branches</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: var(--danger)">${report.branchAnalysis.orphanBranches.length}</div>
+            <div class="stat-label">Orphan Branches</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+    </div>
+
+    <!-- Technical Debt & Complexity -->
+    <div class="grid">
+      ${report.complexity ? `
+      <div class="card">
+        <h2>💳 Technical Debt</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.complexity.technicalDebtScore < 30 ? 'var(--success)' : report.complexity.technicalDebtScore < 60 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.complexity.technicalDebtScore || 0}
+            </div>
+            <div class="stat-label">Debt Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.complexity.debtTrend === 'increasing' ? '📈' : report.complexity.debtTrend === 'decreasing' ? '📉' : '➡️'}</div>
+            <div class="stat-label">${report.complexity.debtTrend || 'stable'}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.complexity.godFiles.length}</div>
+            <div class="stat-label">God Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.complexity.filesWithHighChurn}</div>
+            <div class="stat-label">High Churn</div>
+          </div>
+        </div>
+        ${report.complexity.debtIndicators && report.complexity.debtIndicators.length > 0 ? `
+        <h3 style="margin-top: 1rem;">Debt Indicators</h3>
+        <table style="margin-top: 0.5rem;">
+          <tbody>
+            ${report.complexity.debtIndicators.map(ind => `
+              <tr>
+                <td>${ind.status === 'good' ? '✅' : ind.status === 'warning' ? '⚠️' : '❌'} ${ind.name}</td>
+                <td style="text-align: right;">${ind.value}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
+      </div>
+      ` : ''}
+
+      ${report.hotspots.directoryHotspots && report.hotspots.directoryHotspots.length > 0 ? `
+      <div class="card">
+        <h2>📁 Directory Hotspots</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Directory</th>
+              <th>Risk</th>
+              <th>Commits</th>
+              <th>Files</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.hotspots.directoryHotspots.slice(0, 10).map(dir => `
+              <tr>
+                <td>${this.escapeHtml(this.truncatePath(dir.path, 25))}</td>
+                <td><span class="badge badge-${dir.riskLevel === 'critical' ? 'danger' : dir.riskLevel === 'high' ? 'warning' : 'success'}">${dir.riskLevel.toUpperCase()}</span></td>
+                <td>${dir.commits}</td>
+                <td>${dir.fileCount}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+    </div>
+
+    <!-- Risk Map & Author Breakdown -->
+    <div class="grid">
+      ${report.hotspots.riskMap && report.hotspots.riskMap.length > 0 ? `
+      <div class="card">
+        <h2>🎯 Risk Map</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Risk</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.hotspots.riskMap.slice(0, 8).map(entry => `
+              <tr>
+                <td title="${this.escapeHtml(entry.path)}">${this.escapeHtml(this.truncatePath(entry.path, 30))}</td>
+                <td><span class="badge badge-${entry.riskLevel === 'critical' ? 'danger' : entry.riskLevel === 'high' ? 'warning' : 'success'}">${entry.riskLevel.toUpperCase()}</span></td>
+                <td>${entry.combinedRisk.toFixed(0)}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+
+      ${report.commitQuality && report.commitQuality.authorBreakdown && report.commitQuality.authorBreakdown.length > 0 ? `
+      <div class="card">
+        <h2>👥 Author Contribution Types</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Author</th>
+              <th>Primary Type</th>
+              <th>Commits</th>
+              <th>Diversity</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.commitQuality.authorBreakdown.slice(0, 8).map(author => `
+              <tr>
+                <td>${this.escapeHtml(author.author.substring(0, 20))}</td>
+                <td><span class="badge badge-success">${author.primaryType}</span></td>
+                <td>${author.totalCommits}</td>
+                <td>${author.diversityScore}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+    </div>
+
+    <!-- Type Evolution Chart -->
+    ${report.commitQuality && report.commitQuality.typeEvolution && report.commitQuality.typeEvolution.length > 0 ? `
+    <div class="grid">
+      <div class="card card-full">
+        <h2>📈 Commit Type Evolution</h2>
+        <div class="chart-container">
+          <canvas id="typeEvolutionChart"></canvas>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
     <!-- Contributors Table -->
     <div class="grid">
       <div class="card card-full">
@@ -412,6 +742,33 @@ export class HtmlRenderer implements OutputRenderer {
         plugins: { legend: { display: false } }
       }
     });
+
+    // Type Evolution Chart (if exists)
+    ${report.commitQuality && report.commitQuality.typeEvolution && report.commitQuality.typeEvolution.length > 0 ? `
+    const typeEvolutionData = ${JSON.stringify(this.getTypeEvolutionData(report))};
+    const typeColors = {
+      feat: '#10b981', fix: '#ef4444', docs: '#3b82f6', style: '#8b5cf6',
+      refactor: '#f59e0b', test: '#06b6d4', chore: '#6b7280', other: '#9ca3af',
+      update: '#22c55e', remove: '#f43f5e', merge: '#a855f7', config: '#14b8a6'
+    };
+    new Chart(document.getElementById('typeEvolutionChart'), {
+      type: 'bar',
+      data: {
+        labels: typeEvolutionData.labels,
+        datasets: typeEvolutionData.types.map(t => ({
+          label: t.type,
+          data: t.data,
+          backgroundColor: typeColors[t.type] || '#6b7280',
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+    ` : ''}
   </script>
 </body>
 </html>`;
@@ -465,6 +822,37 @@ export class HtmlRenderer implements OutputRenderer {
       labels: months.map(([key]) => key),
       values: months.map(([, stats]) => stats.commits),
     };
+  }
+
+  private getTypeEvolutionData(report: AnalysisReport): { labels: string[]; types: { type: string; data: number[] }[] } {
+    const evolution = report.commitQuality?.typeEvolution || [];
+    if (evolution.length === 0) {
+      return { labels: [], types: [] };
+    }
+
+    // Get all unique types across all months
+    const allTypes = new Set<string>();
+    for (const entry of evolution) {
+      for (const type of Object.keys(entry.types)) {
+        allTypes.add(type);
+      }
+    }
+
+    // Build dataset for each type
+    const labels = evolution.map(e => e.month);
+    const types = Array.from(allTypes).map(type => ({
+      type,
+      data: evolution.map(e => e.types[type] || 0),
+    }));
+
+    // Sort types by total commits (most common first)
+    types.sort((a, b) => {
+      const totalA = a.data.reduce((sum, v) => sum + v, 0);
+      const totalB = b.data.reduce((sum, v) => sum + v, 0);
+      return totalB - totalA;
+    });
+
+    return { labels, types: types.slice(0, 8) }; // Limit to top 8 types
   }
 }
 

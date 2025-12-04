@@ -144,6 +144,29 @@ export interface HotspotAnalysis {
   files: FileStats[];
   directories: DirectoryStats[];
   codeOwnership: OwnershipMap;
+  directoryHotspots?: DirectoryHotspot[];
+  riskMap?: RiskMapEntry[];
+}
+
+export interface DirectoryHotspot {
+  path: string;
+  commits: number;
+  fileCount: number;
+  churnScore: number;
+  authorCount: number;
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  topFiles: string[];
+  avgFileChurn: number;
+}
+
+export interface RiskMapEntry {
+  path: string;
+  frequency: number;
+  complexity: number;
+  ownership: number;
+  combinedRisk: number;
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  recommendation: string;
 }
 
 export interface DirectoryStats {
