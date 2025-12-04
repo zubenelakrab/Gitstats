@@ -9,12 +9,23 @@ import { createRenderer } from '../outputs/index.ts';
 import { isGitRepository } from '../utils/exec.ts';
 import type { AnalysisConfig, OutputFormat } from '../types/index.ts';
 
+const BANNER = `
+   ${chalk.cyan('_____ _ _   _____ _        _')}
+  ${chalk.cyan('/ ____(_) | / ____| |      | |')}
+ ${chalk.cyan('| |  __ _| |_| (___ | |_ __ _| |_ ___')}
+ ${chalk.cyan('| | |_ | | __|\\___ \\| __/ _\` | __/ __|')}
+ ${chalk.cyan('| |__| | | |_ ____) | || (_| | |_\\__ \\')}
+  ${chalk.cyan('\\_____|\\_\\__|_____/ \\__\\__,_|\\__|___/')}
+                                    ${chalk.gray('v0.1.0')}
+`;
+
 const program = new Command();
 
 program
   .name('gitstats')
   .description('Powerful Git repository analyzer with comprehensive statistics')
-  .version('0.1.0');
+  .version('0.1.0')
+  .addHelpText('before', BANNER);
 
 // Main analyze command
 program

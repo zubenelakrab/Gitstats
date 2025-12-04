@@ -1,5 +1,14 @@
 # GitStats
 
+```
+   _____ _ _   _____ _        _
+  / ____(_) | / ____| |      | |
+ | |  __ _| |_| (___ | |_ __ _| |_ ___
+ | | |_ | | __|\___ \| __/ _` | __/ __|
+ | |__| | | |_ ____) | || (_| | |_\__ \
+  \_____|_|\__|_____/ \__\__,_|\__|___/
+```
+
 Powerful Git repository analyzer that provides comprehensive statistics, insights, and visualizations about your codebase.
 
 ## Features
