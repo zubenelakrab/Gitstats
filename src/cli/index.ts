@@ -19,6 +19,10 @@ const BANNER = `
                                     ${chalk.gray('v0.1.0')}
 `;
 
+function showBanner(): void {
+  console.log(BANNER);
+}
+
 const program = new Command();
 
 program
@@ -44,6 +48,7 @@ program
   .option('--max-commits <n>', 'Maximum number of commits to analyze', parseInt)
   .option('--theme <theme>', 'Theme for HTML output (light, dark)', 'light')
   .action(async (path: string, options) => {
+    showBanner();
     const repoPath = resolve(path);
 
     // Validate repository
@@ -107,6 +112,7 @@ program
   .description('Show quick summary of a repository')
   .argument('[path]', 'Path to the repository', '.')
   .action(async (path: string) => {
+    showBanner();
     const repoPath = resolve(path);
 
     const isRepo = await isGitRepository(repoPath);
@@ -146,6 +152,7 @@ program
   .option('-n, --top <n>', 'Show top N authors', parseInt, 10)
   .option('--sort <field>', 'Sort by field (commits, additions, deletions)', 'commits')
   .action(async (path: string, options) => {
+    showBanner();
     const repoPath = resolve(path);
 
     const isRepo = await isGitRepository(repoPath);
@@ -204,6 +211,7 @@ program
   .argument('[path]', 'Path to the repository', '.')
   .option('-n, --top <n>', 'Show top N hotspots', parseInt, 15)
   .action(async (path: string, options) => {
+    showBanner();
     const repoPath = resolve(path);
 
     const isRepo = await isGitRepository(repoPath);
@@ -250,6 +258,7 @@ program
   .description('Analyze bus factor and knowledge distribution')
   .argument('[path]', 'Path to the repository', '.')
   .action(async (path: string) => {
+    showBanner();
     const repoPath = resolve(path);
 
     const isRepo = await isGitRepository(repoPath);
