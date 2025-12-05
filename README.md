@@ -45,19 +45,13 @@ Powerful Git repository analyzer that provides comprehensive statistics, insight
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/gitstats.git
-cd gitstats
-npm install
+npm install -g @zubenelakrab/gitstats
 ```
 
 ## Usage
 
 ```bash
-# Using Node.js directly
-node --experimental-strip-types src/cli/index.ts <command> [path] [options]
-
-# Or create an alias
-alias gitstats='node --experimental-strip-types /path/to/gitstats/src/cli/index.ts'
+gitstats <command> [path] [options]
 ```
 
 ## Commands
