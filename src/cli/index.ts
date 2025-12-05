@@ -16,7 +16,7 @@ const BANNER = `
  ${chalk.cyan('| | |_ | | __|\\___ \\| __/ _\` | __/ __|')}
  ${chalk.cyan('| |__| | | |_ ____) | || (_| | |_\\__ \\')}
   ${chalk.cyan('\\_____|\\_\\__|_____/ \\__\\__,_|\\__|___/')}
-                                    ${chalk.gray('v0.1.2')}
+                                    ${chalk.gray('v0.1.3')}
 `;
 
 function showBanner(): void {
@@ -28,7 +28,7 @@ const program = new Command();
 program
   .name('gitstats')
   .description('Powerful Git repository analyzer with comprehensive statistics')
-  .version('0.1.2')
+  .version('0.1.3')
   .addHelpText('before', BANNER);
 
 // Main analyze command
