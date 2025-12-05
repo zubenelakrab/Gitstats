@@ -2,7 +2,7 @@ import type {
   AnalysisReport,
   OutputConfig,
   OutputRenderer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import { writeFile } from 'node:fs/promises';
 
 /**

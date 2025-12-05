@@ -5,14 +5,14 @@ import type {
   FileStats,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import {
   toDateString,
   toMonthKey,
   getDayOfWeek,
   getHourOfDay,
   daysDifference,
-} from '../utils/date.ts';
+} from '../utils/date.js';
 
 /**
  * Normalize author key for grouping (by email)

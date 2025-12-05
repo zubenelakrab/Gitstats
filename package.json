@@ -1,14 +1,21 @@
 {
   "name": "@zubenelakrab/gitstats",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Powerful Git repository analyzer with comprehensive statistics and insights",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "gitstats": "./src/cli/index.ts"
+    "gitstats": "./bin/gitstats.js"
   },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "start": "node --experimental-strip-types src/cli/index.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "test": "node --experimental-strip-types --test src/**/*.test.ts",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"

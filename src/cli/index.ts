@@ -4,10 +4,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { resolve } from 'node:path';
-import { analyzeRepository } from '../core/analyzer.ts';
-import { createRenderer } from '../outputs/index.ts';
-import { isGitRepository } from '../utils/exec.ts';
-import type { AnalysisConfig, OutputFormat } from '../types/index.ts';
+import { analyzeRepository } from '../core/analyzer.js';
+import { createRenderer } from '../outputs/index.js';
+import { isGitRepository } from '../utils/exec.js';
+import type { AnalysisConfig, OutputFormat } from '../types/index.js';
 
 const BANNER = `
    ${chalk.cyan('_____ _ _   _____ _        _')}
@@ -641,8 +641,8 @@ program
       if (patterns.crunchPeriods.length > 0) {
         console.log(chalk.bold.red(`\n  🔥 Crunch Periods Detected:`));
         patterns.crunchPeriods.slice(0, 5).forEach(period => {
-          const severityColor = period.severity === 'high' ? chalk.red :
-                               period.severity === 'medium' ? chalk.yellow : chalk.gray;
+          const severityColor = period.severity === 'severe' ? chalk.red :
+                               period.severity === 'moderate' ? chalk.yellow : chalk.gray;
           console.log(`    ${severityColor('●')} ${period.startDate} to ${period.endDate} (${period.severity})`);
         });
       }

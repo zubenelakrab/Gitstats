@@ -1,16 +1,16 @@
 // GitStats - Git Repository Analyzer
 // Main entry point for programmatic usage
 
-export * from './types/index.ts';
-export * from './core/index.ts';
-export * from './parsers/index.ts';
-export * from './analyzers/index.ts';
-export * from './outputs/index.ts';
-export * from './utils/index.ts';
+export * from './types/index.js';
+export * from './core/index.js';
+export * from './parsers/index.js';
+export * from './analyzers/index.js';
+export * from './outputs/index.js';
+export * from './utils/index.js';
 
-import { analyzeRepository } from './core/analyzer.ts';
-import { createRenderer } from './outputs/index.ts';
-import type { AnalysisConfig, OutputConfig, AnalysisReport } from './types/index.ts';
+import { analyzeRepository } from './core/analyzer.js';
+import { createRenderer } from './outputs/index.js';
+import type { AnalysisConfig, OutputConfig, AnalysisReport } from './types/index.js';
 
 /**
  * Analyze a repository and render output

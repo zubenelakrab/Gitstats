@@ -2,12 +2,12 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import {
   getDayOfWeek,
   getHourOfDay,
   toDateString,
-} from '../utils/date.ts';
+} from '../utils/date.js';
 
 export interface WorkPatternsStats {
   // Overall patterns

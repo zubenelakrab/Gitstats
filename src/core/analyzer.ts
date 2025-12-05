@@ -3,21 +3,21 @@ import type {
   AnalysisReport,
   ReportSummary,
   Author,
-} from '../types/index.ts';
-import { createGitParser } from '../parsers/git-parser.ts';
-import { createAuthorAnalyzer } from '../analyzers/author-analyzer.ts';
-import { createTimelineAnalyzer } from '../analyzers/timeline-analyzer.ts';
-import { createHotspotAnalyzer } from '../analyzers/hotspot-analyzer.ts';
-import { createBusFactorAnalyzer } from '../analyzers/busfactor-analyzer.ts';
-import { createVelocityAnalyzer } from '../analyzers/velocity-analyzer.ts';
-import { createComplexityAnalyzer } from '../analyzers/complexity-analyzer.ts';
-import { createWorkPatternsAnalyzer } from '../analyzers/workpatterns-analyzer.ts';
-import { createCommitQualityAnalyzer } from '../analyzers/commits-analyzer.ts';
-import { createCollaborationAnalyzer } from '../analyzers/collaboration-analyzer.ts';
-import { createCouplingAnalyzer } from '../analyzers/coupling-analyzer.ts';
-import { createHealthAnalyzer } from '../analyzers/health-analyzer.ts';
-import { createBranchesAnalyzer } from '../analyzers/branches-analyzer.ts';
-import { daysDifference } from '../utils/date.ts';
+} from '../types/index.js';
+import { createGitParser } from '../parsers/git-parser.js';
+import { createAuthorAnalyzer } from '../analyzers/author-analyzer.js';
+import { createTimelineAnalyzer } from '../analyzers/timeline-analyzer.js';
+import { createHotspotAnalyzer } from '../analyzers/hotspot-analyzer.js';
+import { createBusFactorAnalyzer } from '../analyzers/busfactor-analyzer.js';
+import { createVelocityAnalyzer } from '../analyzers/velocity-analyzer.js';
+import { createComplexityAnalyzer } from '../analyzers/complexity-analyzer.js';
+import { createWorkPatternsAnalyzer } from '../analyzers/workpatterns-analyzer.js';
+import { createCommitQualityAnalyzer } from '../analyzers/commits-analyzer.js';
+import { createCollaborationAnalyzer } from '../analyzers/collaboration-analyzer.js';
+import { createCouplingAnalyzer } from '../analyzers/coupling-analyzer.js';
+import { createHealthAnalyzer } from '../analyzers/health-analyzer.js';
+import { createBranchesAnalyzer } from '../analyzers/branches-analyzer.js';
+import { daysDifference } from '../utils/date.js';
 
 export interface AnalyzerProgress {
   phase: string;

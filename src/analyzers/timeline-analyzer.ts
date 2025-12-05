@@ -7,7 +7,7 @@ import type {
   YearStats,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import {
   toDateString,
   toWeekKey,
@@ -16,7 +16,7 @@ import {
   getWeekNumber,
   getMonthNumber,
   getYearNumber,
-} from '../utils/date.ts';
+} from '../utils/date.js';
 
 /**
  * Analyzer for timeline-based statistics

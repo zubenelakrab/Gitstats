@@ -3,10 +3,10 @@ import type {
   OutputConfig,
   OutputRenderer,
   AuthorStats,
-} from '../types/index.ts';
+} from '../types/index.js';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { formatDate, getRelativeTime } from '../utils/date.ts';
+import { formatDate, getRelativeTime } from '../utils/date.js';
 
 /**
  * CLI output renderer with colored tables

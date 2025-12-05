@@ -2,9 +2,9 @@ import type {
   AnalysisReport,
   OutputConfig,
   OutputRenderer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import { writeFile } from 'node:fs/promises';
-import { formatDate } from '../utils/date.ts';
+import { formatDate } from '../utils/date.js';
 
 /**
  * HTML output renderer with interactive charts

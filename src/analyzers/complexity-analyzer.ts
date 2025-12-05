@@ -2,7 +2,7 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 
 export interface ComplexityStats {
   // God files (too many lines or too many changes)

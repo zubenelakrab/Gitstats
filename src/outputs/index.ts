@@ -1,11 +1,11 @@
-export * from './json-renderer.ts';
-export * from './cli-renderer.ts';
-export * from './html-renderer.ts';
+export * from './json-renderer.js';
+export * from './cli-renderer.js';
+export * from './html-renderer.js';
 
-import type { OutputFormat, OutputRenderer } from '../types/index.ts';
-import { createJsonRenderer } from './json-renderer.ts';
-import { createCliRenderer } from './cli-renderer.ts';
-import { createHtmlRenderer } from './html-renderer.ts';
+import type { OutputFormat, OutputRenderer } from '../types/index.js';
+import { createJsonRenderer } from './json-renderer.js';
+import { createCliRenderer } from './cli-renderer.js';
+import { createHtmlRenderer } from './html-renderer.js';
 
 /**
  * Factory function to create the appropriate renderer

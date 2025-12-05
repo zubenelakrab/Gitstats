@@ -2,9 +2,9 @@ import type {
   Branch,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
-import { daysDifference } from '../utils/date.ts';
-import { execGit } from '../utils/exec.ts';
+} from '../types/index.js';
+import { daysDifference } from '../utils/date.js';
+import { execGit } from '../utils/exec.js';
 
 export interface BranchesStats {
   // Branch counts

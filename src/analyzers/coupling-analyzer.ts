@@ -2,7 +2,7 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import { dirname } from 'node:path';
 
 export interface CouplingStats {

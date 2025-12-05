@@ -1,2 +1,2 @@
-export * from './exec.ts';
-export * from './date.ts';
+export * from './exec.js';
+export * from './date.js';

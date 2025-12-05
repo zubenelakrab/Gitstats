@@ -3,13 +3,13 @@ import type {
   AnalysisConfig,
   Analyzer,
   Tag,
-} from '../types/index.ts';
+} from '../types/index.js';
 import {
   toWeekKey,
   getWeekNumber,
   getYearNumber,
   daysDifference,
-} from '../utils/date.ts';
+} from '../utils/date.js';
 
 export interface VelocityStats {
   // Overall velocity

@@ -9,8 +9,8 @@ import type {
   Remote,
   GitParser,
   AnalysisConfig,
-} from '../types/index.ts';
-import { execGit, isGitRepository } from '../utils/exec.ts';
+} from '../types/index.js';
+import { execGit, isGitRepository } from '../utils/exec.js';
 import { basename } from 'node:path';
 
 // Unique separator for parsing git log output

@@ -2,9 +2,9 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 import { dirname } from 'node:path';
-import { daysDifference } from '../utils/date.ts';
+import { daysDifference } from '../utils/date.js';
 
 export interface HealthStats {
   // Zombie files (exist but never touched)

@@ -1,1 +1,1 @@
-export * from './git-parser.ts';
+export * from './git-parser.js';

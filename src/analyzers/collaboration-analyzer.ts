@@ -2,7 +2,7 @@ import type {
   Commit,
   AnalysisConfig,
   Analyzer,
-} from '../types/index.ts';
+} from '../types/index.js';
 
 export interface CollaborationStats {
   // Collaboration pairs
