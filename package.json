@@ -1,5 +1,5 @@
 {
-  "name": "gitstats",
+  "name": "@zubenelakrab/gitstats",
   "version": "0.1.0",
   "description": "Powerful Git repository analyzer with comprehensive statistics and insights",
   "type": "module",
@@ -20,10 +20,21 @@
     "repository",
     "commits",
     "contributors",
-    "visualization"
+    "visualization",
+    "technical-debt",
+    "code-quality",
+    "bus-factor"
   ],
-  "author": "",
+  "author": "zubenelakrab",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zubenelakrab/Gitstats.git"
+  },
+  "homepage": "https://github.com/zubenelakrab/Gitstats#readme",
+  "bugs": {
+    "url": "https://github.com/zubenelakrab/Gitstats/issues"
+  },
   "engines": {
     "node": ">=22.0.0"
   },
