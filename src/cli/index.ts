@@ -424,6 +424,30 @@ program
         });
       }
 
+      // Codebase evolution
+      if (velocity.codebaseEvolution && velocity.codebaseEvolution.monthly.length > 0) {
+        const evolution = velocity.codebaseEvolution;
+        console.log(chalk.bold(`\n  📈 Codebase Evolution:`));
+        console.log(`    Total LOC growth: ${evolution.totalGrowth > 0 ? chalk.green('+' + evolution.totalGrowth.toLocaleString()) : chalk.red(evolution.totalGrowth.toLocaleString())}`);
+        console.log(`    Avg monthly growth: ${evolution.averageMonthlyGrowth > 0 ? '+' : ''}${evolution.averageMonthlyGrowth.toLocaleString()} lines`);
+        console.log(`    File count trend: ${evolution.fileCountTrend}`);
+
+        if (evolution.largestExpansion.month !== 'N/A') {
+          console.log(`    Largest expansion: ${chalk.cyan(evolution.largestExpansion.month)} (+${evolution.largestExpansion.additions.toLocaleString()} lines)`);
+        }
+        if (evolution.largestRefactor.month !== 'N/A') {
+          console.log(`    Largest refactor: ${chalk.yellow(evolution.largestRefactor.month)} (-${evolution.largestRefactor.deletions.toLocaleString()} lines)`);
+        }
+
+        // Show last 6 months
+        console.log(chalk.bold(`\n    Recent monthly evolution:`));
+        const recentMonths = evolution.monthly.slice(-6);
+        for (const month of recentMonths) {
+          const change = month.netChange >= 0 ? chalk.green(`+${month.netChange}`) : chalk.red(month.netChange.toString());
+          console.log(`      ${month.month}: ${change} (${chalk.gray(`+${month.filesAdded}/-${month.filesDeleted} files`)})`);
+        }
+      }
+
       console.log('');
     } catch (error) {
       spinner.fail('Failed');
@@ -528,6 +552,19 @@ program
           const path = file.path.length > 45 ? '...' + file.path.slice(-42) : file.path.padEnd(45);
           console.log(`    ${chalk.blue('●')} ${path}`);
           console.log(`      ${chalk.gray(file.suggestion)}`);
+        });
+      }
+
+      // Critical hotspots (high churn + high changes)
+      if (complexity.criticalHotspots && complexity.criticalHotspots.length > 0) {
+        console.log(chalk.bold.red(`\n  🔥 Critical Hotspots (High Churn + High Changes):`));
+        complexity.criticalHotspots.slice(0, options.top).forEach(hotspot => {
+          const path = hotspot.path.length > 40 ? '...' + hotspot.path.slice(-37) : hotspot.path.padEnd(40);
+          const riskColor = hotspot.riskLevel === 'critical' ? chalk.red :
+                           hotspot.riskLevel === 'high' ? chalk.yellow : chalk.gray;
+          console.log(`    ${riskColor('●')} ${path} Risk: ${riskColor(hotspot.riskScore.toString())}%`);
+          console.log(`      ${chalk.gray(`${hotspot.commitCount} commits, ${hotspot.totalChanges.toLocaleString()} LOC, ${hotspot.authorCount} authors`)}`);
+          console.log(`      ${chalk.gray(hotspot.riskFactors.join(' | '))}`);
         });
       }
 
@@ -1051,6 +1088,27 @@ program
           console.log(`    ${chalk.red('●')} ${name}`);
           console.log(`      ${chalk.gray(branch.reason)}`);
         });
+      }
+
+      // Branch lifecycle metrics
+      if (branchStats.branchLifecycle) {
+        const lifecycle = branchStats.branchLifecycle;
+        console.log(chalk.bold(`\n  📊 Branch Lifecycle:`));
+        console.log(`    ${chalk.bold('Workflow type:')}        ${chalk.cyan(lifecycle.workflowType)}`);
+        console.log(`    ${chalk.bold('Active branches:')}      ${chalk.green(lifecycle.activeCount.toString())} (${lifecycle.activePercentage}%)`);
+        console.log(`    ${chalk.bold('Inactive branches:')}    ${chalk.yellow(lifecycle.inactiveCount.toString())}`);
+        console.log(`    ${chalk.bold('Stale branches:')}       ${chalk.red(lifecycle.staleCount.toString())}`);
+        console.log(`    ${chalk.bold('Merged branches:')}      ${lifecycle.mergedBranches} (${lifecycle.mergeRate}% merge rate)`);
+        console.log(`    ${chalk.bold('Avg branch lifespan:')}  ${lifecycle.estimatedAvgLifespan} days`);
+
+        if (lifecycle.shortLivedBranches > 0 || lifecycle.longLivedBranches > 0) {
+          console.log(`    ${chalk.bold('Short-lived (<7d):')}    ${lifecycle.shortLivedBranches}`);
+          console.log(`    ${chalk.bold('Long-lived (>30d):')}    ${lifecycle.longLivedBranches}`);
+        }
+
+        console.log(chalk.bold(`\n  📅 Recent Activity:`));
+        console.log(`    Branches created (last 30 days): ${lifecycle.branchesCreatedLast30Days}`);
+        console.log(`    Branches created (last 90 days): ${lifecycle.branchesCreatedLast90Days}`);
       }
 
       console.log('');

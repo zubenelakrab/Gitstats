@@ -25,6 +25,21 @@ export interface ComplexityStats {
   debtTrend: 'increasing' | 'stable' | 'decreasing';
   criticalDebtAreas: CriticalDebtArea[];
   debtIndicators: DebtIndicator[];
+
+  // Critical hotspots - files with high churn AND high changes (NEW)
+  criticalHotspots: CriticalHotspot[];
+}
+
+// Files with both high churn (many commits) AND high changes (many LOC) - most dangerous
+export interface CriticalHotspot {
+  path: string;
+  commitCount: number;
+  totalChanges: number; // additions + deletions
+  authorCount: number;
+  changeVelocity: number; // changes per commit
+  riskScore: number; // 0-100, higher = more risky
+  riskLevel: 'critical' | 'high' | 'medium';
+  riskFactors: string[];
 }
 
 export interface ModuleDebt {
@@ -218,6 +233,9 @@ export class ComplexityAnalyzer implements Analyzer<ComplexityStats> {
     if (growingCount > shrinkingCount * 2) debtTrend = 'increasing';
     else if (shrinkingCount > growingCount * 2) debtTrend = 'decreasing';
 
+    // Calculate critical hotspots (files with high churn AND high changes)
+    const criticalHotspots = this.calculateCriticalHotspots(fileStats);
+
     return {
       godFiles: godFiles.slice(0, 20),
       growingFiles: growingFiles.slice(0, 20),
@@ -230,6 +248,7 @@ export class ComplexityAnalyzer implements Analyzer<ComplexityStats> {
       debtTrend,
       criticalDebtAreas,
       debtIndicators,
+      criticalHotspots,
     };
   }
 
@@ -390,6 +409,99 @@ export class ComplexityAnalyzer implements Analyzer<ComplexityStats> {
       return 'High change frequency - stabilize API or add better abstractions';
     }
     return 'Monitor and refactor incrementally';
+  }
+
+  private calculateCriticalHotspots(
+    fileStats: Map<string, { additions: number; deletions: number; commits: number; authors: Set<string> }>
+  ): CriticalHotspot[] {
+    const hotspots: CriticalHotspot[] = [];
+
+    // Calculate thresholds based on distribution
+    const allCommits = Array.from(fileStats.values()).map(s => s.commits);
+    const allChanges = Array.from(fileStats.values()).map(s => s.additions + s.deletions);
+
+    const avgCommits = allCommits.reduce((a, b) => a + b, 0) / (allCommits.length || 1);
+    const avgChanges = allChanges.reduce((a, b) => a + b, 0) / (allChanges.length || 1);
+
+    // Files are critical if they have BOTH high churn AND high changes
+    const highChurnThreshold = Math.max(avgCommits * 2, 10);
+    const highChangesThreshold = Math.max(avgChanges * 2, 500);
+
+    for (const [path, stats] of fileStats) {
+      const totalChanges = stats.additions + stats.deletions;
+
+      // Both conditions must be true for a critical hotspot
+      if (stats.commits >= highChurnThreshold && totalChanges >= highChangesThreshold) {
+        const changeVelocity = totalChanges / stats.commits;
+        const riskFactors: string[] = [];
+
+        // Calculate risk score components
+        let riskScore = 0;
+
+        // High churn factor (max 30 points)
+        const churnFactor = Math.min(30, (stats.commits / highChurnThreshold) * 15);
+        riskScore += churnFactor;
+        if (stats.commits > highChurnThreshold * 2) {
+          riskFactors.push(`Very high churn (${stats.commits} commits)`);
+        } else {
+          riskFactors.push(`High churn (${stats.commits} commits)`);
+        }
+
+        // High changes factor (max 30 points)
+        const changesFactor = Math.min(30, (totalChanges / highChangesThreshold) * 15);
+        riskScore += changesFactor;
+        if (totalChanges > highChangesThreshold * 2) {
+          riskFactors.push(`Very high changes (${totalChanges} LOC)`);
+        } else {
+          riskFactors.push(`High changes (${totalChanges} LOC)`);
+        }
+
+        // Author concentration factor (max 20 points)
+        if (stats.authors.size === 1) {
+          riskScore += 20;
+          riskFactors.push('Single author (bus factor risk)');
+        } else if (stats.authors.size <= 2) {
+          riskScore += 10;
+          riskFactors.push('Few authors (knowledge concentration)');
+        }
+
+        // High velocity factor (max 20 points)
+        if (changeVelocity > 100) {
+          riskScore += 20;
+          riskFactors.push('High change velocity per commit');
+        } else if (changeVelocity > 50) {
+          riskScore += 10;
+          riskFactors.push('Moderate change velocity');
+        }
+
+        riskScore = Math.min(100, Math.round(riskScore));
+
+        let riskLevel: CriticalHotspot['riskLevel'];
+        if (riskScore >= 70) {
+          riskLevel = 'critical';
+        } else if (riskScore >= 50) {
+          riskLevel = 'high';
+        } else {
+          riskLevel = 'medium';
+        }
+
+        hotspots.push({
+          path,
+          commitCount: stats.commits,
+          totalChanges,
+          authorCount: stats.authors.size,
+          changeVelocity: Math.round(changeVelocity),
+          riskScore,
+          riskLevel,
+          riskFactors,
+        });
+      }
+    }
+
+    // Sort by risk score descending
+    hotspots.sort((a, b) => b.riskScore - a.riskScore);
+
+    return hotspots.slice(0, 15);
   }
 }
 

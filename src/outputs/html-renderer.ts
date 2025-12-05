@@ -318,6 +318,60 @@ export class HtmlRenderer implements OutputRenderer {
           </div>
         </div>
         ` : ''}
+        ${report.velocity.codebaseEvolution && report.velocity.codebaseEvolution.monthly.length > 0 ? `
+        <h3 style="margin-top: 1rem;">📈 Codebase Evolution</h3>
+        <div class="stat-grid" style="margin-top: 0.5rem;">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.velocity.codebaseEvolution.totalGrowth >= 0 ? 'var(--success)' : 'var(--danger)'}">
+              ${report.velocity.codebaseEvolution.totalGrowth >= 0 ? '+' : ''}${report.velocity.codebaseEvolution.totalGrowth.toLocaleString()}
+            </div>
+            <div class="stat-label">Total LOC Growth</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.codebaseEvolution.averageMonthlyGrowth >= 0 ? '+' : ''}${report.velocity.codebaseEvolution.averageMonthlyGrowth.toLocaleString()}</div>
+            <div class="stat-label">Avg Monthly</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.velocity.codebaseEvolution.fileCountTrend}</div>
+            <div class="stat-label">File Trend</div>
+          </div>
+          ${report.velocity.codebaseEvolution.largestExpansion.month !== 'N/A' ? `
+          <div class="stat">
+            <div class="stat-value" style="color: var(--success); font-size: 1rem;">${report.velocity.codebaseEvolution.largestExpansion.month}</div>
+            <div class="stat-label">Largest Expansion (+${report.velocity.codebaseEvolution.largestExpansion.additions.toLocaleString()})</div>
+          </div>
+          ` : ''}
+          ${report.velocity.codebaseEvolution.largestRefactor.month !== 'N/A' ? `
+          <div class="stat">
+            <div class="stat-value" style="color: var(--warning); font-size: 1rem;">${report.velocity.codebaseEvolution.largestRefactor.month}</div>
+            <div class="stat-label">Largest Refactor (-${report.velocity.codebaseEvolution.largestRefactor.deletions.toLocaleString()})</div>
+          </div>
+          ` : ''}
+        </div>
+        <h4 style="margin-top: 1rem; font-size: 0.9rem;">Monthly Evolution (last 12 months)</h4>
+        <table style="margin-top: 0.5rem; font-size: 0.85rem;">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Net Change</th>
+              <th>Added</th>
+              <th>Deleted</th>
+              <th>Files +/-</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.velocity.codebaseEvolution.monthly.slice(-12).map(m => `
+              <tr>
+                <td>${m.month}</td>
+                <td style="color: ${m.netChange >= 0 ? 'var(--success)' : 'var(--danger)'}">${m.netChange >= 0 ? '+' : ''}${m.netChange.toLocaleString()}</td>
+                <td style="color: var(--success)">+${m.additions.toLocaleString()}</td>
+                <td style="color: var(--danger)">-${m.deletions.toLocaleString()}</td>
+                <td>+${m.filesAdded}/-${m.filesDeleted}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
       </div>
       ` : ''}
 
@@ -469,6 +523,63 @@ export class HtmlRenderer implements OutputRenderer {
             <div class="stat-label">Orphan Branches</div>
           </div>
         </div>
+        ${report.branchAnalysis.branchLifecycle ? `
+        <h3 style="margin-top: 1rem;">📊 Branch Lifecycle</h3>
+        <div class="stat-grid" style="margin-top: 0.5rem;">
+          <div class="stat">
+            <div class="stat-value">${report.branchAnalysis.branchLifecycle.workflowType}</div>
+            <div class="stat-label">Workflow</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: var(--success)">${report.branchAnalysis.branchLifecycle.activePercentage}%</div>
+            <div class="stat-label">Active</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.branchAnalysis.branchLifecycle.mergeRate}%</div>
+            <div class="stat-label">Merge Rate</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.branchAnalysis.branchLifecycle.estimatedAvgLifespan}d</div>
+            <div class="stat-label">Avg Lifespan</div>
+          </div>
+        </div>
+        <table style="margin-top: 0.75rem; font-size: 0.85rem;">
+          <tbody>
+            <tr>
+              <td>Active branches (&lt;30 days)</td>
+              <td style="text-align: right; color: var(--success)">${report.branchAnalysis.branchLifecycle.activeCount}</td>
+            </tr>
+            <tr>
+              <td>Inactive branches (30-90 days)</td>
+              <td style="text-align: right; color: var(--warning)">${report.branchAnalysis.branchLifecycle.inactiveCount}</td>
+            </tr>
+            <tr>
+              <td>Stale branches (&gt;90 days)</td>
+              <td style="text-align: right; color: var(--danger)">${report.branchAnalysis.branchLifecycle.staleCount}</td>
+            </tr>
+            <tr>
+              <td>Merged / Unmerged</td>
+              <td style="text-align: right;">${report.branchAnalysis.branchLifecycle.mergedBranches} / ${report.branchAnalysis.branchLifecycle.unmergedBranches}</td>
+            </tr>
+            <tr>
+              <td>Short-lived (&lt;7 days)</td>
+              <td style="text-align: right;">${report.branchAnalysis.branchLifecycle.shortLivedBranches}</td>
+            </tr>
+            <tr>
+              <td>Long-lived (&gt;30 days)</td>
+              <td style="text-align: right;">${report.branchAnalysis.branchLifecycle.longLivedBranches}</td>
+            </tr>
+            <tr>
+              <td>Created last 30 days</td>
+              <td style="text-align: right;">${report.branchAnalysis.branchLifecycle.branchesCreatedLast30Days}</td>
+            </tr>
+            <tr>
+              <td>Created last 90 days</td>
+              <td style="text-align: right;">${report.branchAnalysis.branchLifecycle.branchesCreatedLast90Days}</td>
+            </tr>
+          </tbody>
+        </table>
+        ` : ''}
       </div>
       ` : ''}
     </div>
@@ -540,6 +651,39 @@ export class HtmlRenderer implements OutputRenderer {
       </div>
       ` : ''}
     </div>
+
+    <!-- Critical Hotspots -->
+    ${report.complexity && report.complexity.criticalHotspots && report.complexity.criticalHotspots.length > 0 ? `
+    <div class="grid">
+      <div class="card card-full">
+        <h2>🔥 Critical Hotspots (High Churn + High Changes)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Risk</th>
+              <th>Score</th>
+              <th>Commits</th>
+              <th>Changes</th>
+              <th>Risk Factors</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.complexity.criticalHotspots.slice(0, 10).map(hotspot => `
+              <tr>
+                <td title="${this.escapeHtml(hotspot.path)}">${this.escapeHtml(this.truncatePath(hotspot.path, 35))}</td>
+                <td><span class="badge badge-${hotspot.riskLevel === 'critical' ? 'danger' : hotspot.riskLevel === 'high' ? 'warning' : 'success'}">${hotspot.riskLevel.toUpperCase()}</span></td>
+                <td>${hotspot.riskScore}%</td>
+                <td>${hotspot.commitCount}</td>
+                <td>${hotspot.totalChanges.toLocaleString()}</td>
+                <td style="font-size: 0.8rem; color: var(--text-secondary)">${hotspot.riskFactors.slice(0, 2).join(', ')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    ` : ''}
 
     <!-- Risk Map & Author Breakdown -->
     <div class="grid">

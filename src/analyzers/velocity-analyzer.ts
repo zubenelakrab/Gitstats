@@ -47,6 +47,31 @@ export interface VelocityStats {
 
   // Sprint/iteration detection (NEW)
   sprintCycles: SprintCycle[];
+
+  // Codebase evolution (NEW)
+  codebaseEvolution: CodebaseEvolution;
+}
+
+// Monthly evolution of the codebase
+export interface CodebaseEvolution {
+  monthly: MonthlyEvolution[];
+  totalGrowth: number; // net LOC change over entire history
+  averageMonthlyGrowth: number;
+  largestExpansion: { month: string; additions: number };
+  largestRefactor: { month: string; deletions: number };
+  fileCountTrend: 'growing' | 'stable' | 'shrinking';
+}
+
+export interface MonthlyEvolution {
+  month: string;
+  additions: number;
+  deletions: number;
+  netChange: number;
+  filesAdded: number;
+  filesDeleted: number;
+  filesModified: number;
+  cumulativeLOC: number; // running total
+  cumulativeFiles: number; // running total of unique files
 }
 
 export interface WeeklyVelocity {
@@ -258,6 +283,9 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
     // Detect sprint cycles (2-week periods with high activity)
     const sprintCycles = this.detectSprintCycles(weeklyVelocity);
 
+    // Calculate codebase evolution
+    const codebaseEvolution = this.calculateCodebaseEvolution(sorted);
+
     return {
       commitsPerDay: commits.length / totalDays,
       commitsPerWeek: (commits.length / totalDays) * 7,
@@ -275,6 +303,7 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
       releaseRhythm,
       velocityByDayOfWeek,
       sprintCycles,
+      codebaseEvolution,
     };
   }
 
@@ -434,6 +463,142 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
     return cycles.slice(0, 10);
   }
 
+  private calculateCodebaseEvolution(commits: Commit[]): CodebaseEvolution {
+    if (commits.length === 0) {
+      return {
+        monthly: [],
+        totalGrowth: 0,
+        averageMonthlyGrowth: 0,
+        largestExpansion: { month: 'N/A', additions: 0 },
+        largestRefactor: { month: 'N/A', deletions: 0 },
+        fileCountTrend: 'stable',
+      };
+    }
+
+    // Group commits by month
+    const monthlyMap = new Map<string, {
+      additions: number;
+      deletions: number;
+      filesAdded: Set<string>;
+      filesDeleted: Set<string>;
+      filesModified: Set<string>;
+    }>();
+
+    // Track all files ever seen
+    const allFilesEver = new Set<string>();
+    const deletedFiles = new Set<string>();
+
+    for (const commit of commits) {
+      const monthKey = commit.date.toISOString().slice(0, 7); // YYYY-MM
+
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, {
+          additions: 0,
+          deletions: 0,
+          filesAdded: new Set(),
+          filesDeleted: new Set(),
+          filesModified: new Set(),
+        });
+      }
+
+      const month = monthlyMap.get(monthKey)!;
+
+      for (const file of commit.files) {
+        month.additions += file.additions;
+        month.deletions += file.deletions;
+
+        // Detect file status based on additions/deletions
+        if (file.additions > 0 && file.deletions === 0 && !allFilesEver.has(file.path)) {
+          // New file (only additions, never seen before)
+          month.filesAdded.add(file.path);
+          allFilesEver.add(file.path);
+        } else if (file.deletions > 0 && file.additions === 0) {
+          // Potentially deleted file (only deletions)
+          month.filesDeleted.add(file.path);
+          deletedFiles.add(file.path);
+        } else {
+          // Modified file
+          month.filesModified.add(file.path);
+          allFilesEver.add(file.path);
+        }
+      }
+    }
+
+    // Build monthly evolution array with cumulative totals
+    const sortedMonths = Array.from(monthlyMap.keys()).sort();
+    const monthly: MonthlyEvolution[] = [];
+    let cumulativeLOC = 0;
+    let cumulativeFiles = 0;
+
+    let largestExpansion = { month: 'N/A', additions: 0 };
+    let largestRefactor = { month: 'N/A', deletions: 0 };
+
+    for (const monthKey of sortedMonths) {
+      const data = monthlyMap.get(monthKey)!;
+      const netChange = data.additions - data.deletions;
+      cumulativeLOC += netChange;
+
+      // Track unique files (approximation based on new files seen)
+      cumulativeFiles += data.filesAdded.size;
+      cumulativeFiles -= data.filesDeleted.size;
+      cumulativeFiles = Math.max(0, cumulativeFiles);
+
+      monthly.push({
+        month: monthKey,
+        additions: data.additions,
+        deletions: data.deletions,
+        netChange,
+        filesAdded: data.filesAdded.size,
+        filesDeleted: data.filesDeleted.size,
+        filesModified: data.filesModified.size,
+        cumulativeLOC,
+        cumulativeFiles,
+      });
+
+      // Track largest expansion
+      if (data.additions > largestExpansion.additions) {
+        largestExpansion = { month: monthKey, additions: data.additions };
+      }
+
+      // Track largest refactor (most deletions)
+      if (data.deletions > largestRefactor.deletions) {
+        largestRefactor = { month: monthKey, deletions: data.deletions };
+      }
+    }
+
+    // Calculate totals and trends
+    const totalGrowth = cumulativeLOC;
+    const averageMonthlyGrowth = monthly.length > 0
+      ? totalGrowth / monthly.length
+      : 0;
+
+    // Determine file count trend (compare first third to last third)
+    let fileCountTrend: 'growing' | 'stable' | 'shrinking' = 'stable';
+    if (monthly.length >= 3) {
+      const thirdLength = Math.floor(monthly.length / 3);
+      const firstThird = monthly.slice(0, thirdLength);
+      const lastThird = monthly.slice(-thirdLength);
+
+      const firstAvgFiles = firstThird.reduce((sum, m) => sum + m.filesAdded.valueOf(), 0) / thirdLength;
+      const lastAvgFiles = lastThird.reduce((sum, m) => sum + m.filesAdded.valueOf(), 0) / thirdLength;
+
+      if (lastAvgFiles > firstAvgFiles * 1.2) {
+        fileCountTrend = 'growing';
+      } else if (lastAvgFiles < firstAvgFiles * 0.8) {
+        fileCountTrend = 'shrinking';
+      }
+    }
+
+    return {
+      monthly,
+      totalGrowth,
+      averageMonthlyGrowth: Math.round(averageMonthlyGrowth),
+      largestExpansion,
+      largestRefactor,
+      fileCountTrend,
+    };
+  }
+
   private emptyStats(): VelocityStats {
     return {
       commitsPerDay: 0,
@@ -458,6 +623,14 @@ export class VelocityAnalyzer implements Analyzer<VelocityStats> {
       },
       velocityByDayOfWeek: [0, 0, 0, 0, 0, 0, 0],
       sprintCycles: [],
+      codebaseEvolution: {
+        monthly: [],
+        totalGrowth: 0,
+        averageMonthlyGrowth: 0,
+        largestExpansion: { month: 'N/A', additions: 0 },
+        largestRefactor: { month: 'N/A', deletions: 0 },
+        fileCountTrend: 'stable',
+      },
     };
   }
 }

@@ -31,6 +31,9 @@ export interface BranchesStats {
 
   // Health score
   branchHealthScore: number;
+
+  // Extended metrics (NEW)
+  branchLifecycle: BranchLifecycle;
 }
 
 export interface StaleBranch {
@@ -61,6 +64,33 @@ export interface NamingPattern {
   count: number;
   examples: string[];
   description: string;
+}
+
+export interface BranchLifecycle {
+  // Activity breakdown
+  activeCount: number; // < 30 days
+  inactiveCount: number; // 30-90 days
+  staleCount: number; // > 90 days
+  activePercentage: number;
+
+  // Merge statistics (estimated from merged branches)
+  mergedBranches: number;
+  unmergedBranches: number;
+  mergeRate: number; // percentage of branches that get merged
+
+  // Lifespan estimates
+  estimatedAvgLifespan: number; // in days
+  shortLivedBranches: number; // < 7 days (likely merged quickly)
+  longLivedBranches: number; // > 30 days
+
+  // Workflow indicators
+  hasGitFlow: boolean;
+  hasTrunkBased: boolean;
+  workflowType: 'gitflow' | 'trunk-based' | 'feature-branch' | 'mixed' | 'unknown';
+
+  // Branch activity summary
+  branchesCreatedLast30Days: number;
+  branchesCreatedLast90Days: number;
 }
 
 export class BranchesAnalyzer implements Analyzer<BranchesStats> {
@@ -178,6 +208,14 @@ export class BranchesAnalyzer implements Analyzer<BranchesStats> {
       branches.length
     );
 
+    // Calculate branch lifecycle metrics
+    const branchLifecycle = this.calculateBranchLifecycle(
+      branches,
+      mergedBranches,
+      namingPatterns,
+      now
+    );
+
     return {
       totalBranches: branches.length,
       localBranches: localBranches.length,
@@ -190,6 +228,7 @@ export class BranchesAnalyzer implements Analyzer<BranchesStats> {
       oldestBranch,
       newestBranch,
       branchHealthScore,
+      branchLifecycle,
     };
   }
 
@@ -272,6 +311,96 @@ export class BranchesAnalyzer implements Analyzer<BranchesStats> {
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
+  private calculateBranchLifecycle(
+    branches: Branch[],
+    mergedBranches: Set<string>,
+    namingPatterns: NamingPattern[],
+    now: Date
+  ): BranchLifecycle {
+    // Activity breakdown
+    let activeCount = 0;
+    let inactiveCount = 0;
+    let staleCount = 0;
+    let shortLivedBranches = 0;
+    let longLivedBranches = 0;
+    let branchesCreatedLast30Days = 0;
+    let branchesCreatedLast90Days = 0;
+
+    for (const branch of branches) {
+      const daysSinceCommit = daysDifference(branch.lastCommitDate, now);
+
+      if (daysSinceCommit < 30) {
+        activeCount++;
+        branchesCreatedLast30Days++;
+        branchesCreatedLast90Days++;
+      } else if (daysSinceCommit < 90) {
+        inactiveCount++;
+        branchesCreatedLast90Days++;
+      } else {
+        staleCount++;
+      }
+
+      // Lifespan estimates based on branch age
+      if (daysSinceCommit < 7) {
+        shortLivedBranches++;
+      } else if (daysSinceCommit > 30) {
+        longLivedBranches++;
+      }
+    }
+
+    const totalBranches = branches.length || 1;
+    const activePercentage = Math.round((activeCount / totalBranches) * 100);
+
+    // Merge statistics
+    const mergedCount = mergedBranches.size;
+    const unmergedCount = totalBranches - mergedCount;
+    const mergeRate = Math.round((mergedCount / totalBranches) * 100);
+
+    // Estimate average lifespan (rough approximation based on activity)
+    const branchAges = branches.map(b => daysDifference(b.lastCommitDate, now));
+    const estimatedAvgLifespan = branchAges.length > 0
+      ? Math.round(branchAges.reduce((a, b) => a + b, 0) / branchAges.length)
+      : 0;
+
+    // Workflow detection
+    const hasFeatureBranches = namingPatterns.some(p => p.pattern === 'feature/*' && p.count > 0);
+    const hasDevelop = namingPatterns.some(p => p.pattern === 'develop' && p.count > 0);
+    const hasReleaseBranches = namingPatterns.some(p => p.pattern === 'release/*' && p.count > 0);
+    const hasHotfixBranches = namingPatterns.some(p => p.pattern === 'hotfix/*' && p.count > 0);
+
+    const hasGitFlow = hasDevelop && hasFeatureBranches && (hasReleaseBranches || hasHotfixBranches);
+    const hasTrunkBased = !hasDevelop && totalBranches <= 5;
+
+    let workflowType: BranchLifecycle['workflowType'] = 'unknown';
+    if (hasGitFlow) {
+      workflowType = 'gitflow';
+    } else if (hasTrunkBased) {
+      workflowType = 'trunk-based';
+    } else if (hasFeatureBranches) {
+      workflowType = 'feature-branch';
+    } else if (hasFeatureBranches && hasDevelop) {
+      workflowType = 'mixed';
+    }
+
+    return {
+      activeCount,
+      inactiveCount,
+      staleCount,
+      activePercentage,
+      mergedBranches: mergedCount,
+      unmergedBranches: unmergedCount,
+      mergeRate,
+      estimatedAvgLifespan,
+      shortLivedBranches,
+      longLivedBranches,
+      hasGitFlow,
+      hasTrunkBased,
+      workflowType,
+      branchesCreatedLast30Days,
+      branchesCreatedLast90Days,
+    };
+  }
+
   private emptyStats(): BranchesStats {
     return {
       totalBranches: 0,
@@ -285,6 +414,23 @@ export class BranchesAnalyzer implements Analyzer<BranchesStats> {
       oldestBranch: null,
       newestBranch: null,
       branchHealthScore: 100,
+      branchLifecycle: {
+        activeCount: 0,
+        inactiveCount: 0,
+        staleCount: 0,
+        activePercentage: 100,
+        mergedBranches: 0,
+        unmergedBranches: 0,
+        mergeRate: 0,
+        estimatedAvgLifespan: 0,
+        shortLivedBranches: 0,
+        longLivedBranches: 0,
+        hasGitFlow: false,
+        hasTrunkBased: false,
+        workflowType: 'unknown',
+        branchesCreatedLast30Days: 0,
+        branchesCreatedLast90Days: 0,
+      },
     };
   }
 }
