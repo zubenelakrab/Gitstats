@@ -32,10 +32,19 @@ Powerful Git repository analyzer that provides comprehensive statistics, insight
 - **Health Analysis** - Zombie files, legacy code, test metrics
 - **Branch Analysis** - Stale branches, orphans, workflow detection
 
+### New Analyzers
+- **Burnout Detection** - Identify developer burnout risk based on work patterns
+- **Leaderboard** - Gamified contributor stats with achievements and fun stats
+- **Dead Code Detection** - Find potentially unused or abandoned code
+- **Dependency Analysis** - File dependencies and circular dependency detection
+- **Code Duplication** - Detect copy-paste code and refactoring opportunities
+- **Code City 3D** - Interactive 3D visualization of your codebase
+
 ### Output Formats
 - **CLI** - Colored terminal output with charts
 - **JSON** - Machine-readable export
 - **HTML** - Interactive dashboard with Chart.js visualizations
+- **HTML Reports** - Individual HTML reports for each analyzer
 
 ## Requirements
 
@@ -56,6 +65,35 @@ gitstats <command> [path] [options]
 
 ## Commands
 
+### report
+Generate all HTML reports in a directory.
+
+```bash
+gitstats report /path/to/repo -d ./reports
+```
+
+This generates 16 HTML reports + an index page:
+- `analyze.html` - Full analysis dashboard
+- `velocity.html` - Development velocity
+- `busfactor.html` - Bus factor analysis
+- `workpatterns.html` - Work patterns
+- `complexity.html` - Code complexity
+- `commits.html` - Commit quality
+- `collaboration.html` - Team collaboration
+- `coupling.html` - File coupling
+- `health.html` - Repository health
+- `branches.html` - Branch analysis
+- `burnout.html` - Burnout risk detection
+- `leaderboard.html` - Contributor leaderboard
+- `deadcode.html` - Dead code detection
+- `dependencies.html` - Dependency analysis
+- `duplicates.html` - Code duplication
+- `city.html` - 3D Code City visualization
+- `index.html` - Links to all reports
+
+Options:
+- `-d, --dir <directory>` - Output directory (default: `./gitstats-report`)
+
 ### summary
 Quick overview of a repository.
 
@@ -70,15 +108,15 @@ Full analysis with all metrics.
 gitstats analyze /path/to/repo
 
 # Export to HTML dashboard
-gitstats analyze /path/to/repo -o html -f report.html
+gitstats analyze /path/to/repo -f report.html
 
 # Export to JSON
 gitstats analyze /path/to/repo -o json -f report.json
 ```
 
 Options:
-- `-o, --output <format>` - Output format: `cli`, `json`, `html` (default: `cli`)
-- `-f, --file <path>` - Save output to file
+- `-o, --output <format>` - Output format: `cli`, `json` (default: `cli`)
+- `-f, --file <path>` - Save HTML report to file (always shows CLI output)
 - `-b, --branch <branch>` - Analyze specific branch
 - `--since <date>` - Only commits after this date (ISO format)
 - `--until <date>` - Only commits before this date (ISO format)
@@ -113,6 +151,7 @@ Analyze knowledge distribution and identify risky areas.
 
 ```bash
 gitstats busfactor /path/to/repo
+gitstats busfactor /path/to/repo -f busfactor.html
 ```
 
 ### velocity
@@ -120,6 +159,7 @@ Analyze development velocity and trends.
 
 ```bash
 gitstats velocity /path/to/repo
+gitstats velocity /path/to/repo -f velocity.html
 ```
 
 Shows:
@@ -135,6 +175,7 @@ Analyze code complexity and technical debt.
 
 ```bash
 gitstats complexity /path/to/repo
+gitstats complexity /path/to/repo -f complexity.html
 ```
 
 Shows:
@@ -150,6 +191,7 @@ Analyze commit patterns and quality.
 
 ```bash
 gitstats commits /path/to/repo
+gitstats commits /path/to/repo -f commits.html
 ```
 
 Shows:
@@ -165,6 +207,7 @@ Analyze work patterns and team habits.
 
 ```bash
 gitstats workpatterns /path/to/repo
+gitstats workpatterns /path/to/repo -f workpatterns.html
 ```
 
 Shows:
@@ -180,6 +223,7 @@ Analyze repository health and code freshness.
 
 ```bash
 gitstats health /path/to/repo
+gitstats health /path/to/repo -f health.html
 ```
 
 Shows:
@@ -194,6 +238,7 @@ Analyze team collaboration patterns.
 
 ```bash
 gitstats collaboration /path/to/repo
+gitstats collaboration /path/to/repo -f collaboration.html
 ```
 
 Shows:
@@ -208,6 +253,7 @@ Analyze file coupling (files that change together).
 
 ```bash
 gitstats coupling /path/to/repo
+gitstats coupling /path/to/repo -f coupling.html
 ```
 
 Shows:
@@ -220,6 +266,7 @@ Analyze branch health and patterns.
 
 ```bash
 gitstats branches /path/to/repo
+gitstats branches /path/to/repo -f branches.html
 ```
 
 Shows:
@@ -229,6 +276,90 @@ Shows:
 - Naming patterns (GitFlow detection)
 - Branch lifecycle metrics
 - Workflow type detection
+
+### burnout
+Detect developer burnout risk.
+
+```bash
+gitstats burnout /path/to/repo
+gitstats burnout /path/to/repo -f burnout.html
+```
+
+Shows:
+- Team burnout risk score
+- Individual developer risk levels
+- Risk factors (overtime, weekend work, late nights)
+- Recommendations
+
+### leaderboard
+Gamified contributor statistics.
+
+```bash
+gitstats leaderboard /path/to/repo
+gitstats leaderboard /path/to/repo -f leaderboard.html
+```
+
+Shows:
+- Most commits, code contributors, bug hunters
+- Feature builders, refactor masters, documentation heroes
+- Achievements and badges
+- Fun stats (night owl, polyglot, big bang commits)
+
+### deadcode
+Detect potentially dead or unused code.
+
+```bash
+gitstats deadcode /path/to/repo
+gitstats deadcode /path/to/repo -f deadcode.html
+```
+
+Shows:
+- Potentially dead files
+- Stale exports
+- Unused dependencies
+- Recommendations
+
+### dependencies
+Analyze file dependencies.
+
+```bash
+gitstats dependencies /path/to/repo
+gitstats dependencies /path/to/repo -f dependencies.html
+```
+
+Shows:
+- Dependency health score
+- Circular dependencies
+- Hub files (high connectivity)
+- Module clusters
+
+### duplicates
+Detect code duplication.
+
+```bash
+gitstats duplicates /path/to/repo
+gitstats duplicates /path/to/repo -f duplicates.html
+```
+
+Shows:
+- Duplication percentage
+- Clone groups
+- Potential LOC savings
+- Refactoring recommendations
+
+### city
+3D Code City visualization.
+
+```bash
+gitstats city /path/to/repo
+gitstats city /path/to/repo -f city.html
+```
+
+Generates an interactive 3D visualization where:
+- Buildings represent files
+- Building height = lines of code
+- Building color = file type
+- Districts = directories
 
 ## Understanding the Metrics
 
@@ -272,6 +403,13 @@ Monthly tracking of:
 - **Merge rate**: percentage of branches that get merged
 - **Average lifespan**: how long branches live
 
+### Burnout Risk
+Based on:
+- Overtime work patterns
+- Weekend commits frequency
+- Late night coding
+- Sprint intensity
+
 ## HTML Dashboard
 
 The HTML output generates an interactive dashboard with:
@@ -289,7 +427,7 @@ The HTML output generates an interactive dashboard with:
 - Full contributor list
 
 ```bash
-gitstats analyze /path/to/repo -o html -f dashboard.html
+gitstats analyze /path/to/repo -f dashboard.html
 open dashboard.html
 ```
 
@@ -316,11 +454,19 @@ gitstats/
 │   │   ├── health-analyzer.ts    # Repo health
 │   │   ├── collaboration-analyzer.ts # Team patterns
 │   │   ├── coupling-analyzer.ts  # File coupling
-│   │   └── branches-analyzer.ts  # Branch health
+│   │   ├── branches-analyzer.ts  # Branch health
+│   │   ├── burnout-analyzer.ts   # Burnout detection
+│   │   ├── leaderboard-analyzer.ts # Gamified stats
+│   │   ├── deadcode-analyzer.ts  # Dead code detection
+│   │   ├── dependency-analyzer.ts # Dependencies
+│   │   ├── copypaste-analyzer.ts # Code duplication
+│   │   └── codecity-analyzer.ts  # 3D visualization
 │   ├── outputs/
 │   │   ├── cli-renderer.ts       # Terminal output
 │   │   ├── html-renderer.ts      # HTML dashboard
-│   │   └── json-renderer.ts      # JSON export
+│   │   ├── json-renderer.ts      # JSON export
+│   │   ├── analyzer-html-renderers.ts # Individual HTML reports
+│   │   └── city3d-renderer.ts    # 3D Code City
 │   ├── types/
 │   │   └── index.ts              # TypeScript definitions
 │   └── utils/

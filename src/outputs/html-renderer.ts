@@ -750,6 +750,267 @@ export class HtmlRenderer implements OutputRenderer {
     </div>
     ` : ''}
 
+    <!-- Burnout Analysis -->
+    ${report.burnout ? `
+    <div class="grid">
+      <div class="card card-full">
+        <h2>🔥 Burnout Risk Analysis</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.burnout.teamRiskLevel === 'low' ? 'var(--success)' : report.burnout.teamRiskLevel === 'medium' ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.burnout.teamRiskScore}/100
+            </div>
+            <div class="stat-label">Team Risk Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.burnout.teamPatterns.avgNightCommitPercentage.toFixed(0)}%</div>
+            <div class="stat-label">Night Commits</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.burnout.teamPatterns.avgWeekendCommitPercentage.toFixed(0)}%</div>
+            <div class="stat-label">Weekend Commits</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.burnout.teamPatterns.teamWorkLifeBalance}/100</div>
+            <div class="stat-label">Work-Life Balance</div>
+          </div>
+        </div>
+        ${report.burnout.developerRisks.filter(d => d.riskLevel !== 'low').length > 0 ? `
+        <h3 style="margin-top: 1rem;">At-Risk Developers</h3>
+        <table style="margin-top: 0.5rem;">
+          <thead>
+            <tr>
+              <th>Developer</th>
+              <th>Risk</th>
+              <th>Score</th>
+              <th>Signals</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.burnout.developerRisks.filter(d => d.riskLevel !== 'low').slice(0, 5).map(dev => `
+              <tr>
+                <td>${this.escapeHtml(dev.name.substring(0, 25))}</td>
+                <td><span class="badge badge-${dev.riskLevel === 'high' || dev.riskLevel === 'critical' ? 'danger' : 'warning'}">${dev.riskLevel.toUpperCase()}</span></td>
+                <td>${dev.riskScore}/100</td>
+                <td style="font-size: 0.8rem;">${dev.signals.slice(0, 2).map(s => s.description).join(', ')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : '<p style="margin-top: 1rem; color: var(--success)">✅ No developers at significant burnout risk</p>'}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Leaderboard -->
+    ${report.leaderboard ? `
+    <div class="grid">
+      <div class="card">
+        <h2>🏆 Leaderboards</h2>
+        ${report.leaderboard.leaderboards.slice(0, 4).map(board => `
+          <h3 style="margin-top: 0.75rem;">${board.emoji} ${board.name}</h3>
+          <table style="font-size: 0.85rem;">
+            <tbody>
+              ${board.entries.slice(0, 3).map((entry, i) => `
+                <tr>
+                  <td>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} ${this.escapeHtml(entry.name.substring(0, 20))}</td>
+                  <td style="text-align: right;">${entry.formattedValue}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `).join('')}
+      </div>
+
+      <div class="card">
+        <h2>🎖️ Achievements</h2>
+        ${report.leaderboard.achievements.slice(0, 5).map(dev => `
+          <div style="margin-bottom: 0.75rem;">
+            <strong>${this.escapeHtml(dev.name.substring(0, 20))}</strong>
+            <span style="color: var(--text-secondary);"> - ${dev.totalPoints} pts</span>
+            <div style="margin-top: 0.25rem;">
+              ${dev.achievements.slice(0, 6).map(a => `<span title="${a.name}: ${a.description}">${a.emoji}</span>`).join(' ')}
+            </div>
+          </div>
+        `).join('')}
+        ${report.leaderboard.funStats.length > 0 ? `
+        <h3 style="margin-top: 1rem;">🎉 Fun Stats</h3>
+        <ul style="margin-top: 0.5rem; font-size: 0.85rem; list-style: none;">
+          ${report.leaderboard.funStats.slice(0, 4).map(stat => `
+            <li style="margin-bottom: 0.25rem;">${stat.emoji} ${stat.name}: ${this.escapeHtml(stat.winner.substring(0, 20))}</li>
+          `).join('')}
+        </ul>
+        ` : ''}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Dead Code Analysis -->
+    ${report.deadCode ? `
+    <div class="grid">
+      <div class="card">
+        <h2>💀 Dead Code Detection</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">${report.deadCode.summary.totalFilesAnalyzed}</div>
+            <div class="stat-label">Files Analyzed</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: var(--danger)">${report.deadCode.summary.deadFilesCount}</div>
+            <div class="stat-label">Dead Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.deadCode.summary.zombieFilesCount}</div>
+            <div class="stat-label">Zombie Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.deadCode.summary.deadCodePercentage.toFixed(1)}%</div>
+            <div class="stat-label">Dead Code %</div>
+          </div>
+        </div>
+        ${report.deadCode.deadFiles.length > 0 ? `
+        <h3 style="margin-top: 1rem;">Dead Files</h3>
+        <table style="margin-top: 0.5rem;">
+          <thead><tr><th>File</th><th>Confidence</th></tr></thead>
+          <tbody>
+            ${report.deadCode.deadFiles.slice(0, 5).map(f => `
+              <tr>
+                <td title="${this.escapeHtml(f.path)}">${this.escapeHtml(this.truncatePath(f.path, 35))}</td>
+                <td>${f.confidence}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
+      </div>
+
+      <!-- Dependencies Analysis -->
+      ${report.dependencies ? `
+      <div class="card">
+        <h2>🕸️ Dependency Analysis</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.dependencies.summary.healthScore >= 70 ? 'var(--success)' : report.dependencies.summary.healthScore >= 40 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.dependencies.summary.healthScore}/100
+            </div>
+            <div class="stat-label">Health Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: var(--danger)">${report.dependencies.circularDependencies.length}</div>
+            <div class="stat-label">Circular Deps</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.dependencies.hubFiles.length}</div>
+            <div class="stat-label">Hub Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.dependencies.orphanModules.length}</div>
+            <div class="stat-label">Orphan Modules</div>
+          </div>
+        </div>
+        ${report.dependencies.circularDependencies.length > 0 ? `
+        <h3 style="margin-top: 1rem;">🔄 Circular Dependencies</h3>
+        <ul style="margin-top: 0.5rem; font-size: 0.85rem;">
+          ${report.dependencies.circularDependencies.slice(0, 3).map(c => `
+            <li>Cycle of ${c.cycle.length} files: ${this.escapeHtml(c.cycle[0].substring(0, 30))}...</li>
+          `).join('')}
+        </ul>
+        ` : ''}
+      </div>
+      ` : ''}
+    </div>
+    ` : ''}
+
+    <!-- Copy-Paste Detection -->
+    ${report.duplicates ? `
+    <div class="grid">
+      <div class="card">
+        <h2>📋 Code Duplication</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">${report.duplicates.summary.totalFilesAnalyzed}</div>
+            <div class="stat-label">Files Analyzed</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.duplicates.summary.duplicationPercentage < 10 ? 'var(--success)' : report.duplicates.summary.duplicationPercentage < 30 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.duplicates.summary.duplicationPercentage.toFixed(1)}%
+            </div>
+            <div class="stat-label">Duplication</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.duplicates.summary.cloneGroupCount}</div>
+            <div class="stat-label">Clone Groups</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">~${report.duplicates.summary.estimatedRefactoringSavings} LOC</div>
+            <div class="stat-label">Potential Savings</div>
+          </div>
+        </div>
+        ${report.duplicates.cloneGroups.length > 0 ? `
+        <h3 style="margin-top: 1rem;">Top Duplicate Blocks</h3>
+        <table style="margin-top: 0.5rem; font-size: 0.85rem;">
+          <thead><tr><th>Location</th><th>Instances</th><th>Lines</th></tr></thead>
+          <tbody>
+            ${report.duplicates.cloneGroups.slice(0, 5).map(g => `
+              <tr>
+                <td>${this.escapeHtml(this.truncatePath(g.instances[0].file, 30))}:${g.instances[0].startLine}</td>
+                <td>${g.instances.length}</td>
+                <td>${g.lines}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
+      </div>
+
+      <!-- Code City -->
+      ${report.codeCity ? `
+      <div class="card">
+        <h2>🏙️ Code City Overview</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" style="color: ${report.codeCity.summary.overallHealth >= 70 ? 'var(--success)' : report.codeCity.summary.overallHealth >= 40 ? 'var(--warning)' : 'var(--danger)'}">
+              ${report.codeCity.summary.overallHealth}/100
+            </div>
+            <div class="stat-label">Overall Health</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.codeCity.summary.totalDistricts}</div>
+            <div class="stat-label">Districts</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.codeCity.summary.totalBuildings}</div>
+            <div class="stat-label">Buildings</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${report.codeCity.summary.totalLOC.toLocaleString()}</div>
+            <div class="stat-label">Total LOC</div>
+          </div>
+        </div>
+        <h3 style="margin-top: 1rem;">Building Health</h3>
+        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+          <span style="color: var(--success)">✅ Healthy: ${report.codeCity.summary.healthyBuildings}</span>
+          <span style="color: var(--warning)">⚠️ Warning: ${report.codeCity.summary.warningBuildings}</span>
+          <span style="color: var(--danger)">❌ Critical: ${report.codeCity.summary.criticalBuildings}</span>
+        </div>
+        ${report.codeCity.healthIndicators.length > 0 ? `
+        <h3 style="margin-top: 1rem;">Health Indicators</h3>
+        <table style="margin-top: 0.5rem; font-size: 0.85rem;">
+          <tbody>
+            ${report.codeCity.healthIndicators.map(ind => `
+              <tr>
+                <td>${ind.status === 'good' ? '✅' : ind.status === 'warning' ? '⚠️' : '❌'} ${ind.name}</td>
+                <td style="text-align: right;">${ind.value}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
+      </div>
+      ` : ''}
+    </div>
+    ` : ''}
+
     <!-- Contributors Table -->
     <div class="grid">
       <div class="card card-full">

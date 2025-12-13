@@ -17,6 +17,12 @@ import { createCollaborationAnalyzer } from '../analyzers/collaboration-analyzer
 import { createCouplingAnalyzer } from '../analyzers/coupling-analyzer.js';
 import { createHealthAnalyzer } from '../analyzers/health-analyzer.js';
 import { createBranchesAnalyzer } from '../analyzers/branches-analyzer.js';
+import { createBurnoutAnalyzer } from '../analyzers/burnout-analyzer.js';
+import { createLeaderboardAnalyzer } from '../analyzers/leaderboard-analyzer.js';
+import { createDeadCodeAnalyzer } from '../analyzers/deadcode-analyzer.js';
+import { createDependencyAnalyzer } from '../analyzers/dependency-analyzer.js';
+import { createCopyPasteAnalyzer } from '../analyzers/copypaste-analyzer.js';
+import { createCodeCityAnalyzer } from '../analyzers/codecity-analyzer.js';
 import { daysDifference } from '../utils/date.js';
 
 export interface AnalyzerProgress {
@@ -47,7 +53,7 @@ export class GitStatsAnalyzer {
 
   async analyze(): Promise<AnalysisReport> {
     const parser = createGitParser(this.config.repoPath);
-    const totalPhases = 8;
+    const totalPhases = 10;
 
     // Phase 1: Get repository info
     this.reportProgress('Fetching repository info', 1, totalPhases);
@@ -100,8 +106,24 @@ export class GitStatsAnalyzer {
       createBranchesAnalyzer().analyze(commits, this.config, branches),
     ]);
 
-    // Phase 8: Generate summary and compile report
-    this.reportProgress('Compiling report', 8, totalPhases);
+    // Phase 8: Run burnout and leaderboard analyzers
+    this.reportProgress('Analyzing burnout and leaderboards', 8, totalPhases);
+    const [burnout, leaderboard] = await Promise.all([
+      createBurnoutAnalyzer().analyze(commits, this.config),
+      createLeaderboardAnalyzer().analyze(commits, this.config),
+    ]);
+
+    // Phase 9: Run code quality analyzers (dead code, dependencies, duplicates)
+    this.reportProgress('Analyzing code quality', 9, totalPhases);
+    const [deadCode, dependencies, duplicates] = await Promise.all([
+      createDeadCodeAnalyzer().analyze(commits, this.config),
+      createDependencyAnalyzer().analyze(commits, this.config),
+      createCopyPasteAnalyzer().analyze(commits, this.config),
+    ]);
+
+    // Phase 10: Generate code city and compile report
+    this.reportProgress('Building code city', 10, totalPhases);
+    const codeCity = await createCodeCityAnalyzer().analyze(commits, this.config);
     const summary = this.generateSummary(commits, authors, hotspots, repository);
 
     return {
@@ -124,6 +146,13 @@ export class GitStatsAnalyzer {
       coupling,
       health,
       branchAnalysis,
+      // New analytics
+      burnout,
+      leaderboard,
+      deadCode,
+      dependencies,
+      duplicates,
+      codeCity,
     };
   }
 

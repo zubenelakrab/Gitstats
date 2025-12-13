@@ -1,6 +1,7 @@
 export * from './json-renderer.js';
 export * from './cli-renderer.js';
 export * from './html-renderer.js';
+export * from './city3d-renderer.js';
 
 import type { OutputFormat, OutputRenderer } from '../types/index.js';
 import { createJsonRenderer } from './json-renderer.js';

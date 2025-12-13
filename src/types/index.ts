@@ -12,6 +12,12 @@ import type { CouplingStats } from '../analyzers/coupling-analyzer.js';
 import type { HealthStats } from '../analyzers/health-analyzer.js';
 import type { BranchesStats } from '../analyzers/branches-analyzer.js';
 import type { DirectoryHotspot, RiskMapEntry } from '../analyzers/hotspot-analyzer.js';
+import type { BurnoutStats } from '../analyzers/burnout-analyzer.js';
+import type { LeaderboardStats } from '../analyzers/leaderboard-analyzer.js';
+import type { DeadCodeStats } from '../analyzers/deadcode-analyzer.js';
+import type { DependencyStats } from '../analyzers/dependency-analyzer.js';
+import type { CopyPasteStats } from '../analyzers/copypaste-analyzer.js';
+import type { CodeCityStats } from '../analyzers/codecity-analyzer.js';
 
 // Re-export for convenience
 export type {
@@ -23,6 +29,12 @@ export type {
   CouplingStats,
   HealthStats,
   BranchesStats,
+  BurnoutStats,
+  LeaderboardStats,
+  DeadCodeStats,
+  DependencyStats,
+  CopyPasteStats,
+  CodeCityStats,
 };
 
 // Git Primitives
@@ -259,6 +271,14 @@ export interface AnalysisReport {
   coupling?: CouplingStats;
   health?: HealthStats;
   branchAnalysis?: BranchesStats;
+
+  // New analytics
+  burnout?: BurnoutStats;
+  leaderboard?: LeaderboardStats;
+  deadCode?: DeadCodeStats;
+  dependencies?: DependencyStats;
+  duplicates?: CopyPasteStats;
+  codeCity?: CodeCityStats;
 }
 
 
